@@ -8,8 +8,10 @@ export default class extends BaseSchema {
 			table.string("name", 32).notNullable();
 			table.string("tag", 32).notNullable().unique();
 			table.string("identifier", 32).notNullable;
-			table.string("description", 128).nullable();
+			table.text("description").nullable();
 			table.string("color", 7).nullable();
+			table.integer("priority").nullable().defaultTo(0);
+			table.boolean("visible").nullable().defaultTo(true);
 			table.bigint("permissions").defaultTo(0);
 			
 			table.timestamp("created_at", { useTz: true });
@@ -27,16 +29,12 @@ export default class extends BaseSchema {
 			table.increments("id").primary();
 			table.string("username", 32).notNullable().unique();
 			table.string("email", 64).notNullable().unique();
-			table.string("password").notNullable();
+			table.text("password").notNullable();
+			table.string("remember_me", 64).nullable();
+			table.string("country_code", 2).nullable();
 			table.timestamp("created_at", { useTz: true });
 			table.timestamp("updated_at", { useTz: true });
 			table.timestamp("logged_in_at", { useTz: true }).nullable();
-
-			// create the default group foreign key
-			table.integer("default_group_id")
-				.unsigned()
-				.nullable()
-				.references("groups.id");
 		});
 
 		// create the account_groups pivot table
@@ -49,13 +47,8 @@ export default class extends BaseSchema {
 	}
 
 	public async down() {
-		// drop the groups table
-		this.schema.dropTable("groups");
-
-		// drop the accounts table
-		this.schema.dropTable("accounts");
-
-		// drop the account_groups pivot table
 		this.schema.dropTable("account_groups");
+		this.schema.dropTable("accounts");
+		this.schema.dropTable("groups");
 	}
 }

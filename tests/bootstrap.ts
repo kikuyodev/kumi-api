@@ -8,6 +8,7 @@
 import type { Config } from "@japa/runner";
 import TestUtils from "@ioc:Adonis/Core/TestUtils";
 import { apiClient, assert, runFailedTests, specReporter } from "@japa/preset-adonis";
+import { fileSystem } from "@japa/file-system";
 
 /*
 |--------------------------------------------------------------------------

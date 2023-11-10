@@ -1,0 +1,27 @@
+#KUMI CHART FORMAT v1
+
+[#METADATA]
+ARTIST = 無力P
+ARTIST_ROMANISED = MuryokuP
+TITLE = Sweet Sweet Cendrillion Drug
+SOURCE = Forlorn
+GENRE = Rock
+TAGS = megurine luka
+
+[#CHART]
+CREATORS = Author, Author2
+DIFFICULTY_NAME = Inner Oni
+INITIAL_SCROLL_SPEED = 1.0
+MUSIC_FILE = audio.mp3
+CHART_SET_ID = -1
+CHAR_ID = -1
+
+[#EVENTS]
+0,"bg.jpg"
+
+[#TIMINGS]
+0,1246,195.0,4/4,1.0,100,0
+
+[#NOTES]
+0,1246,0
+1,1554,0

@@ -1,16 +1,37 @@
-import { BaseModel, HasMany, HasOne, ManyToMany, column, hasMany, hasOne, manyToMany } from "@ioc:Adonis/Lucid/Orm";
+import { BaseModel, HasMany, HasOne, ManyToMany, afterFind, afterSave, afterUpdate, column, hasMany, hasOne, manyToMany } from "@ioc:Adonis/Lucid/Orm";
 import Account from "App/models/Account";
-import Chart, { ChartStatus, ChartUnicodeMetadata } from "App/models/Chart";
+import Chart, { ChartRomanisedMetadata, ChartStatus } from "App/models/Chart";
 import { DateTime } from "luxon";
+
+/// The minimum number of nominators required to nominate a set.
+/// This is a constant because it's used in multiple places, and
+/// should be scaled manually in accordance to the number of
+/// players in the game, or depending on the game's direction.
+///
+/// Changing this value will not affect existing sets.
+///
+/// Changelog:
+/// 11/07/2023 - Initial value (1)
+///
+export const REQUIRED_NOMINATORS = 1; 
 
 export const DEFAULT_ATTRIBUTES: ChartSetAttributes = {
     is_unavailable: false,
-    unavailable_reason: ""
+    unavailable_reason: "",
+    nominators_required: REQUIRED_NOMINATORS
 };
 
 export interface ChartSetAttributes {
     is_unavailable: boolean;
     unavailable_reason: string;
+    nominators_required: number;
+}
+
+export interface ChartSetInternalData {
+    background: string;
+    background_hash: string;
+    music: string;
+    music_hash: string;
 }
 
 /**
@@ -35,19 +56,13 @@ export default class ChartSet extends BaseModel {
     public title: string;
 
     /**
-     * The difficulty name of the set.
-     */
-    @column()
-    public difficulty_name: string;
-
-    /**
      * The tags of the set that are used for searching.
      */
     @column()
     public tags: string;
 
     /**
-     * The description of the c.
+     * The description of the set.
      */
     @column()
     public description: string;
@@ -59,12 +74,12 @@ export default class ChartSet extends BaseModel {
     public source: string | null;
 
     /**
-     * The unicode metadata of the set if any.
+     * The romanised metadata of the set if any.
      */
     @column({
-        columnName: "unicode_metadata"
+        columnName: "romanised_metadata"
     })
-    public unicodeMetadata: ChartUnicodeMetadata | null;
+    public romanisedMetadata: ChartRomanisedMetadata | null;
 
     /**
      * The status of the set.
@@ -77,19 +92,27 @@ export default class ChartSet extends BaseModel {
      */
     @column()
     public attributes: ChartSetAttributes;
+    /**
+     * The attributes of the set.
+     */
+    @column({
+        serializeAs: null,
+        columnName: "internal_data"
+    })
+    public internalData: ChartSetInternalData;
 
     @column({
         serializeAs: null,
         columnName: "creator_id"
     })
-    public creator_id: number;
+    public creatorId: number;
 
     /**
      * The player that created this set.
      */
     @hasOne(() => Account, {
         foreignKey: "id",
-        localKey: "creator_id"
+        localKey: "creatorId"
     })
     public creator: HasOne<typeof Account>;
     
@@ -98,14 +121,14 @@ export default class ChartSet extends BaseModel {
      */
     @manyToMany(() => Account, {
         localKey: "id",
-        pivotForeignKey: "chartset_id",
+        pivotForeignKey: "set_id",
         relatedKey: "id",
         pivotRelatedForeignKey: "account_id",
         pivotTable: "chart_set_nominations"
     })
     public nominators: ManyToMany<typeof Account>;
 
-    /**
+    /** 
      * The people who favorited this set.
      */
     @manyToMany(() => Account, {
@@ -119,7 +142,7 @@ export default class ChartSet extends BaseModel {
 
     @hasMany(() => Chart, {
         localKey: "id",
-        foreignKey: "set_id"
+        foreignKey: "chartSetId"
     })
     public charts: HasMany<typeof Chart>;
     
@@ -140,4 +163,17 @@ export default class ChartSet extends BaseModel {
         columnName: "ranked_on",
     })
     public rankedOn: DateTime | null;
+
+    @afterFind()
+    @afterSave()
+    @afterUpdate()
+    public static async preloadRelations(set: ChartSet) {
+        await set.load((loader) => {
+            loader
+                .load("creator")
+                .load("charts")
+                .load("nominators")
+                .load("favorites");
+        });
+    }
 }

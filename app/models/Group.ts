@@ -1,4 +1,4 @@
-import { BaseModel, HasOne, column, hasOne } from "@ioc:Adonis/Lucid/Orm";
+import { BaseModel, column } from "@ioc:Adonis/Lucid/Orm";
 import { DateTime } from "luxon";
 
 export default class Group extends BaseModel {
@@ -20,6 +20,12 @@ export default class Group extends BaseModel {
     @column()
     public color: string;
 
+    @column()
+    public visible: boolean;
+    
+    @column()
+    public priority: number;
+
     @column({
         serializeAs: null
     })
@@ -37,21 +43,4 @@ export default class Group extends BaseModel {
         columnName: "updated_at",
     })
     public updatedAt: DateTime;
-
-    @column({
-        serializeAs: null
-    })
-    public parentId: number | null;
-
-    @hasOne(() => Group)
-    public parent: HasOne<typeof Group>;
-
-    public getPermissions(): number {
-        // Manually calculate permissions
-        if (this.parent) {
-            return this.permissions | this.parent.getPermissions();
-        }
-
-        return this.permissions;
-    }
 }

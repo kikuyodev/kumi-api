@@ -1,38 +1,25 @@
-import { BaseModel, HasOne, ManyToMany, column, hasOne, manyToMany } from "@ioc:Adonis/Lucid/Orm";
+import { BaseModel, HasOne, ManyToMany, afterFetch, afterFind, column, hasOne, manyToMany } from "@ioc:Adonis/Lucid/Orm";
 import Account from "App/models/Account";
 import ChartSet from "App/models/ChartSet";
 import { DateTime } from "luxon";
 
 export enum ChartStatus {
-    Pending,
     WorkInProgress,
+    Pending,
     Ranked,
     Qualified,
     Graveyard
 }
-
-export enum ChartCreatorRelationship {
-    Creator,
-    Collaborator
-}
-
-export type AccountWithChartRelationship = Account & {
-    relationship: ChartCreatorRelationship;
-}
-
-export const DEFAULT_DIFFICULTY: ChartDifficulty = {
-    bpms: [],
-    difficulty: 0
-};
 
 export interface ChartDifficulty {
     bpms: string[];
     difficulty: number;
 }
 
-export interface ChartUnicodeMetadata {
-    artist_unicode: string;
-    title_unicode: string;
+export interface ChartRomanisedMetadata {
+    artist_romanised?: string;
+    title_romanised?: string;
+    source_romanised?: string;
 }
 
 /**
@@ -62,20 +49,16 @@ export default class Chart extends BaseModel {
     /**
      * The difficulty name of the chart.
      */
-    @column()
-    public difficulty_name: string;
+    @column({
+        columnName: "difficulty_name"
+    })
+    public difficultyName: string;
 
     /**
      * The tags of the chart that are used for searching.
      */
     @column()
     public tags: string;
-
-    /**
-     * The description of the chart.
-     */
-    @column()
-    public description: string;
 
     /**
      * The source material of the chart's song.
@@ -87,9 +70,9 @@ export default class Chart extends BaseModel {
      * The unicode metadata of the chart if any.
      */
     @column({
-        columnName: "unicode_metadata"
+        columnName: "romanised_metadata"
     })
-    public unicodeMetadata: ChartUnicodeMetadata | null;
+    public romanisedMetadata: ChartRomanisedMetadata;
 
     /**
      * The difficulty data of the chart.
@@ -110,12 +93,6 @@ export default class Chart extends BaseModel {
      */
     @column()
     public status: ChartStatus;
-
-    @column({
-        serializeAs: null,
-        columnName: "creator_id"
-    })
-    public creatorId: number;
 
     /**
      * The players that created this chart.
@@ -141,10 +118,10 @@ export default class Chart extends BaseModel {
      */
     @hasOne(() => ChartSet, {
         foreignKey: "id",
-        localKey: "set_id"
+        localKey: "chartSetId"
     })
     public set: HasOne<typeof ChartSet>;
-    
+
     @column.dateTime({
         autoCreate: true,
         columnName: "created_at",
@@ -157,4 +134,25 @@ export default class Chart extends BaseModel {
         columnName: "updated_at",
     })
     public updatedAt: DateTime;
+
+    @afterFind()
+    public static async preloadRelationsSingle(chart: Chart) {
+        // here we load the set as we are only loading a single chart
+        // typically this will only be used when getting a singular chart
+        // over an API call
+
+        // fetch is for when the chart set is being found from the database
+        await chart.load((loader) => {
+            loader
+                .load("set")
+                .load("creators");
+        });
+    }
+    
+    @afterFetch()
+    public static async preloadRelations(charts: Chart[]) {
+        for (const chart of charts) {
+            await chart.load("creators");
+        }
+    }
 }

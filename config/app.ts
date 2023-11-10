@@ -169,7 +169,7 @@ export const logger: LoggerConfig = {
   | at deployment level and not code level.
   |
   */
-	level: Env.get("LOG_LEVEL", "info"),
+	level: Env.get("LOG_LEVEL", "trace"),
 
 	/*
   |--------------------------------------------------------------------------
@@ -180,7 +180,7 @@ export const logger: LoggerConfig = {
   | can have huge impact on performance.
   |
   */
-	prettyPrint: Env.get("NODE_ENV") === "development",
+	prettyPrint: Env.get("NODE_ENV") !== "production",
 };
 
 /*

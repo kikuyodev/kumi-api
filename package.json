@@ -14,8 +14,10 @@
   ],
   "devDependencies": {
     "@adonisjs/assembler": "^5.9.6",
+    "@japa/file-system": "^2.0.0",
     "@japa/preset-adonis": "^1.2.0",
     "@japa/runner": "^2.5.1",
+    "@types/geoip-lite": "^1.4.4",
     "@types/proxy-addr": "^2.0.2",
     "@types/source-map-support": "^0.5.9",
     "@typescript-eslint/eslint-plugin": "^6.9.0",
@@ -33,11 +35,20 @@
     "@adonisjs/lucid": "^18.4.2",
     "@adonisjs/repl": "^3.1.11",
     "@adonisjs/session": "^6.4.0",
+    "adonis5-scheduler": "^2.1.1",
+    "countries-list": "^3.0.6",
+    "discord.js": "^14.13.0",
+    "geoip-lite": "^1.4.8",
     "luxon": "^3.4.3",
+    "nanoid": "^5.0.3",
+    "node-stream-zip": "^1.15.0",
     "pg": "^8.11.3",
     "phc-argon2": "^1.1.4",
     "proxy-addr": "^2.0.7",
     "reflect-metadata": "^0.1.13",
-    "source-map-support": "^0.5.21"
+    "socket.io": "^4.7.2",
+    "source-map-support": "^0.5.21",
+    "tinycolor2": "^1.6.0",
+    "ws": "^8.14.2"
   }
 }

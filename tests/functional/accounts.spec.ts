@@ -7,7 +7,7 @@ test.group("account tests", (group) => {
     test("create an account", async ({ client, assert }) => {
         const response = await client
             .post("/api/v1/accounts")
-            .json({
+            .fields({
                 username: "_test_dummy_account_create",
                 password: "test_password12345",
                 email: "test@email.com",
@@ -45,9 +45,8 @@ test.group("account tests", (group) => {
                 password: "test_password12345"
             });
 
-        console.log(response.body());
         // assert that the response has a 200 status code
-        //response.assertStatus(200);
+        response.assertStatus(200);
     });
 
     group.teardown(async () => {
