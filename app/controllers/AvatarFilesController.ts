@@ -19,6 +19,9 @@ export default class AvatarFilesController {
 
         Logger.trace(`serving avatar ${id} from ${path}`);
 
+        // set mime type
+        response.type(`image/${path.split(".").pop()}`);
+
         return response.stream(await Drive.getStream(path));
     }
 

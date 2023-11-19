@@ -27,8 +27,9 @@ export enum Permissions {
     MODERATE_NOMINATORS = 1 << 6,
     MODERATE_CHARTS = 1 << 7,
     MODERATE_COMMENTS = 1 << 8,
-    NOMINATE_CHARTS = 1 << 9,
-    DISQUALIFY_CHARTS = 1 << 10,
+    MODERATE_CHAT_CHANNELS = 1 << 9,
+    NOMINATE_CHARTS = 1 << 10,
+    DISQUALIFY_CHARTS = 1 << 11,
 }
 
 export enum RestrictionFlags {

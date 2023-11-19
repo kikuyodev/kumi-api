@@ -1,5 +1,6 @@
 import BaseSchema from "@ioc:Adonis/Lucid/Schema";
 import { DEFAULT_ATTRIBUTES } from "App/models/ChartSet";
+import { DEFAULT_STATISTICS } from "../../app/models/Chart";
 
 export default class extends BaseSchema {
   public async up () {
@@ -13,6 +14,7 @@ export default class extends BaseSchema {
       table.jsonb("romanised_metadata").nullable();
       table.jsonb("difficulty").notNullable();
       table.string("map_checksum", 64).notNullable();
+      table.jsonb("statistics").defaultTo(JSON.stringify(DEFAULT_STATISTICS));
       table.integer("status").notNullable();
       table.integer("set_id").notNullable();
 

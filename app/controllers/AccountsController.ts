@@ -3,7 +3,7 @@ import Application from "@ioc:Adonis/Core/Application";
 import { HttpContextContract } from "@ioc:Adonis/Core/HttpContext";
 import { rules, schema } from "@ioc:Adonis/Core/Validator";
 import NoPermissionException from "App/exceptions/NoPermissionException";
-import Account from "App/models/Account";
+import Account, { DEFAULT_SETTINGS } from "App/models/Account";
 import Group from "App/models/Group";
 import { Permissions } from "App/util/Constants";
 import Drive from "@ioc:Adonis/Core/Drive";
@@ -22,10 +22,22 @@ const modifySchema = schema.create({
         size: "2mb",
         extnames: ["jpg", "png", "gif", "webp"]
     }),
+    banner: schema.file.optional({
+        size: "2mb",
+        extnames: ["jpg", "png", "gif", "webp"]
+    }),
     groups: schema.object.optional().members({
         add: groupIdSchema,
-        remove: groupIdSchema,
+        remove: groupIdSchema
     }),
+    biography: schema.string.optional({
+        trim: true,
+        escape: true
+    }),
+    reason: schema.string.optional({
+        trim: true,
+        escape: true
+    })
 });
 
 export default class AccountsController {
@@ -45,7 +57,13 @@ export default class AccountsController {
         return {
             code: 200,
             data: {
-                account: account.serialize()
+                account: {
+                    ...account.serialize(),
+                    ranking: {
+                        ...await account.getRankingStatistics(),
+                        history: await account.getRankingHistory()
+                    }
+                }
             },
             meta: this.provideFetchMetadata(auth.user!, account)
         };
@@ -63,7 +81,8 @@ export default class AccountsController {
             })
         });
 
-        const accounts = await Account.query().paginate(payload.page ?? 1, payload.limit ?? 10);
+        const accounts = await Account.query().paginate(payload.page ?? 1, payload.limit ?? 10)
+        accounts.baseUrl("/api/v1/accounts");
 
         if (auth.user?.has(Permissions.MANAGE_ACCOUNTS)) {
             // TODO: load admin only data when we have any
@@ -74,6 +93,29 @@ export default class AccountsController {
         return {
             code: 200,
             ...accounts.serialize()
+        };
+    }
+
+    public async fetchSettings({ auth }: HttpContextContract) {
+        const account = auth.user!;
+
+        // make sure settings are up to date
+        if (account.settings.version !== DEFAULT_SETTINGS.version) {
+            for (const key in DEFAULT_SETTINGS) {
+                if (account.settings[key] === undefined) {
+                    account.settings[key] = DEFAULT_SETTINGS[key];
+                }
+            }
+
+            account.settings.version = DEFAULT_SETTINGS.version;
+            await account.save();
+        }
+
+        return {
+            code: 200,
+            data: {
+                settings: account.settings
+            }
         };
     }
 
@@ -129,6 +171,21 @@ export default class AccountsController {
             changed.push("avatar");
         }
 
+        if (payload.banner) {
+            for (const extension of ["jpg", "png", "gif", "webp"]) {
+                if (await Drive.exists(`banners/${account.id}.${extension}`)) {
+                    Drive.delete(`banners/${account.id}.${extension}`);
+                }
+            }
+
+            await payload.banner.move(Application.tmpPath("files/banners"), {
+                name: `${account.id}.${payload.banner.extname}`,
+                overwrite: true
+            });
+
+            changed.push("banner");
+        }
+
         if (payload.groups) {
             for (const groupId of payload.groups.add ?? []) {
                 const group = await Group.findOrFail(groupId);
@@ -145,7 +202,7 @@ export default class AccountsController {
                     throw new Exception(addMessage, 400, "E_INVALID_GROUP_PRIORITY");
                 }
 
-                WebhookService.sendGroupMessage(group, account, true);
+                WebhookService.sendGroupMessage(group, account, true, auth.user?.id === account.id ? payload.reason : undefined);
                 await account.related("groups").attach([group.id]);
                 changed.push(`group:${group.id}`);
             }
@@ -171,8 +228,16 @@ export default class AccountsController {
             }
         }
 
+        if (payload.biography) {
+            account.biography = payload.biography;
+
+            changed.push("biography");
+        }
+
         if (changed.length !== 0) {
-            const newAccount = await Account.findOrFail(account.id);
+            await account.save();
+            await account.refresh();
+            
             Logger.trace("account modified", { id: account.id, username: account.username, changes: changed });
 
             return {
@@ -180,7 +245,7 @@ export default class AccountsController {
                 message: "Account modified",
                 data: {
                     changes: changed,
-                    account: newAccount.serialize()
+                    account: account.serialize()
                 }
             };
         } else {
@@ -218,6 +283,7 @@ export default class AccountsController {
                 minLength: "The {{ field }} field must be at least {{ options.minLength }} characters",
                 maxLength: "The {{ field }} field must be at most {{ options.maxLength }} characters",
 
+                "email.unique": "An account with that email already exists",
                 "email.email": "The email field must be a valid email address",
                 "username.alpha": "The username must only contain letters, numbers, underscores, and spaces",
                 "username.unique": "An account with that username already exists",

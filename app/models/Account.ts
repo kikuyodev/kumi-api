@@ -5,11 +5,31 @@ import { DateTime } from "luxon";
 import Logger from "@ioc:Adonis/Core/Logger";
 import Badge from "App/models/Badge";
 import { TCountryCode, getCountryData } from "countries-list";
+import Database from "@ioc:Adonis/Lucid/Database";
+import WebsocketService from "../services/WebsocketService";
 
 export const DEFAULT_ATTRIBUTES: AccountAttributes = {
 };
 
 export interface AccountAttributes {
+}
+
+export const DEFAULT_SETTINGS: AccountSettings = {
+    version: 0
+};
+
+export interface AccountSettings {
+    version: number;
+}
+
+export interface RankingStatistics {
+    global_rank: number;
+    country_rank: number;
+}
+
+export interface RankingHistory {
+    timestamp: DateTime;
+    ranks: RankingStatistics;
 }
 
 export default class Account extends BaseModel {
@@ -62,17 +82,28 @@ export default class Account extends BaseModel {
         serializeAs: null
     })
     public loggedInAt: DateTime;
+
     @column({
         columnName: "title"
     })
     private _title: string;
 
-    @computed()
-    public get title() {
-        return this._title ?? this.primary?.name ?? null;
-    }
+    @column()
+    public biography: string;
+
+    @column({
+        serializeAs: null
+    })
+    public settings: AccountSettings;
 
     @computed()
+    public get title() {
+        return this._title ?? this.safePrimary?.name ?? null;
+    }
+
+    @computed({
+        serializeAs: null
+    })
     public get primary() {
         return this.groups?.[0] ?? null;
     }
@@ -87,6 +118,47 @@ export default class Account extends BaseModel {
         };
     }
 
+    @column({
+        serializeAs: null,
+        columnName: "ranked_score"
+    })
+    public rankedScore: number;
+
+    @column({
+        serializeAs: null,
+        columnName: "total_score"
+    })
+    public totalScore: number;
+
+    @column({
+        serializeAs: null,
+        columnName: "total_playtime"
+    })
+    public totalPlaytime: number;
+
+    @column({
+        serializeAs: null,
+        columnName: "total_playcount"
+    })
+    public totalPlaycount: number;
+
+    @column({
+        serializeAs: null,
+        columnName: "maximum_combo"
+    })
+    public maxCombo: number;
+
+    @computed()
+    public get statistics() {
+        return {
+            ranked_score: this.rankedScore,
+            total_score: this.totalScore,
+            total_playtime: this.totalPlaytime,
+            total_playcount: this.totalPlaycount,
+            maximum_combo: this.maxCombo
+        }
+    }
+
     @manyToMany(() => Group, {
         localKey: "id",
         pivotForeignKey: "account_id",
@@ -95,7 +167,8 @@ export default class Account extends BaseModel {
         pivotTable: "account_groups",
         onQuery: (query) => {
             query.orderBy("priority", "desc");
-        }
+        },
+        serializeAs: null
     })
     public groups: ManyToMany<typeof Group>;
 
@@ -115,6 +188,25 @@ export default class Account extends BaseModel {
         if (account.$dirty.password) {
             account.password = await Hash.make(account.password);
         }
+    }
+
+    @computed({
+        serializeAs: "groups"
+    })
+    public get safeGroups() {
+        return this.groups.filter(group => group.visible === true);
+    }   
+
+    @computed({
+        serializeAs: "primary"
+    })
+    public get safePrimary() {
+        return this.safeGroups[0] ?? null;
+    }
+
+    @computed()
+    public get status() {
+        return WebsocketService.accountConnections.has(this.id) ? "online" : "offline";
     }
 
     @afterFetch()
@@ -139,5 +231,46 @@ export default class Account extends BaseModel {
         }, 0);
 
         return (total & permissions) === permissions;
+    }
+
+    public async getRankingStatistics(): Promise<RankingStatistics> {
+        const query = await Database.rawQuery(`
+            WITH ranked AS (
+                SELECT
+                    ROW_NUMBER() OVER (ORDER BY ranked_score DESC) AS global_rank,
+                    ROW_NUMBER() OVER (PARTITION BY country_code ORDER BY ranked_score DESC) AS country_rank,
+                    id
+                FROM accounts
+            )
+            SELECT
+                global_rank,
+                country_rank
+            FROM ranked WHERE id = ?
+        `, [this.id])
+
+        return {
+            // parseInt is required because the query returns a string
+            global_rank: parseInt(query.rows[0].global_rank),
+            country_rank: parseInt(query.rows[0].country_rank)
+        };
+    }
+
+    public async getRankingHistory(): Promise<RankingHistory[]> {
+        const history = await Database.query<RankingHistory>()
+            .select("timestamp", "ranks")
+            .from("rank_history")
+            .where("account_id", this.id)
+            .orderBy("timestamp", "desc")
+            .limit(99);
+
+        const now = await this.getRankingStatistics();
+
+        return [
+            {
+                timestamp: DateTime.local(),
+                ranks: now
+            },
+            ...history
+        ];
     }
 }

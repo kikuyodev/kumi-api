@@ -133,7 +133,7 @@ export default class extends BaseSeeder {
 				identifier: "dev",
 				permissions: allPermissions,
 				priority: 255,
-				color: "#191d9c"
+				color: "#00bfff"
 			},
 			{
 				name: "Global Moderation Team",

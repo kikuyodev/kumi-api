@@ -48,7 +48,7 @@ export default class extends BaseSchema {
 
 	public async down() {
 		this.schema.dropTable("account_groups");
-		this.schema.dropTable("accounts");
 		this.schema.dropTable("groups");
+		this.schema.dropTable("accounts");
 	}
 }

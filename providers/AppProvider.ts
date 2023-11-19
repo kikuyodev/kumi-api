@@ -1,4 +1,5 @@
 import type { ApplicationContract } from "@ioc:Adonis/Core/Application";
+import MeiliSearch from "App/services/MeiliSearch";
 
 export default class AppProvider {
 	constructor(protected app: ApplicationContract) {
@@ -13,11 +14,19 @@ export default class AppProvider {
 		if (this.app.environment === "web") {
 			await import("../start/webhook");
 			await import("../start/socket");
+			await import("../start/meilisearch");
 		}
 	}
 
 	public async ready() {
-		// App is ready
+		// create indexes for meilisearch
+		if (this.app.environment === "web") {
+			MeiliSearch.index("chartsets").updateFilterableAttributes([
+				"status",
+				"creators",
+				"bpm"
+			]);
+		}
 	}
 
 	public async shutdown() {

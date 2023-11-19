@@ -1,4 +1,4 @@
-import { BaseModel, HasMany, HasOne, ManyToMany, afterFind, afterSave, afterUpdate, column, hasMany, hasOne, manyToMany } from "@ioc:Adonis/Lucid/Orm";
+import { BaseModel, HasMany, HasOne, ManyToMany, afterFetch, afterFind, afterSave, afterUpdate, column, hasMany, hasOne, manyToMany } from "@ioc:Adonis/Lucid/Orm";
 import Account from "App/models/Account";
 import Chart, { ChartRomanisedMetadata, ChartStatus } from "App/models/Chart";
 import { DateTime } from "luxon";
@@ -167,7 +167,7 @@ export default class ChartSet extends BaseModel {
     @afterFind()
     @afterSave()
     @afterUpdate()
-    public static async preloadRelations(set: ChartSet) {
+    public static async preloadSingleRelations(set: ChartSet) {
         await set.load((loader) => {
             loader
                 .load("creator")
@@ -175,5 +175,10 @@ export default class ChartSet extends BaseModel {
                 .load("nominators")
                 .load("favorites");
         });
+    }
+    
+    @afterFetch()
+    public static async preloadMultipleRelations(sets: ChartSet[]) {
+        await Promise.all(sets.map((set) => ChartSet.preloadSingleRelations(set)));
     }
 }

@@ -21,5 +21,7 @@ export default class extends BaseSchema {
   }
 
   public async down() {
+    this.schema.dropTable("chat_messages");
+    this.schema.dropTable("chat_channels");
   }
 }

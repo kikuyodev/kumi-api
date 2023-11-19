@@ -12,7 +12,7 @@ export enum ChartStatus {
 }
 
 export interface ChartDifficulty {
-    bpms: string[];
+    bpms: number[];
     difficulty: number;
 }
 
@@ -21,6 +21,28 @@ export interface ChartRomanisedMetadata {
     title_romanised?: string;
     source_romanised?: string;
 }
+
+export interface ChartGameplayStatistics {
+    notes: ChartGameplayNote[];
+    note_count: number;
+    drain_length: number;
+    total_length: number;
+    music_length: number;
+}
+
+export interface ChartGameplayNote {
+    type: number;
+    start: number;
+    end?: number | null;
+}
+
+export const DEFAULT_STATISTICS: ChartGameplayStatistics = {
+    notes: [],
+    note_count: 0,
+    drain_length: 0,
+    total_length: 0,
+    music_length: 0
+};
 
 /**
  * A representation of a chart for the game.
@@ -79,6 +101,9 @@ export default class Chart extends BaseModel {
      */
     @column()
     public difficulty: ChartDifficulty;
+
+    @column()
+    public statistics: ChartGameplayStatistics;
 
     /**
      * The MD5 checksum of the chart's file.

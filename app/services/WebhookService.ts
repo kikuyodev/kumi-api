@@ -4,6 +4,12 @@ import Logger from "@ioc:Adonis/Core/Logger";
 import Account from "App/models/Account";
 import Group from "App/models/Group";
 
+const DOMAIN = Env.get("DOMAIN");
+
+function url(path: string) {
+    return `${DOMAIN}${path}`;
+}
+
 class WebhookService {
     public booted = false;
 
@@ -25,24 +31,26 @@ class WebhookService {
         this.booted = true;
     }
 
-    public sendGroupMessage(group: Group, account: Account, added: boolean) {
+    public sendGroupMessage(group: Group, account: Account, added: boolean, reason?: string) {
         let color = parseInt(group.color.slice(1), 16);
-        let message = `Account \`${account.username}\` was added to group \`${group.name}\``;
-        let title = "Added to Group";
+        let message = `was **added** to`;
+        let title = "\🎵 Added to Group";
         
         if (added === false) {
             // lower the lightness
             color -= 0x111111;
-            message = `Account \`${account.username}\` was removed from group \`${group.name}\``;
-            title = "Removed from Group";
+            message = `was **removed** from`;
+            title = "\🙁 Removed from Group";
         }
 
+        const date = new Date();
         const embed = new EmbedBuilder();
 
         embed
             .setTitle(title)
-            .setDescription(message)
+            .setDescription(`\`${account.username}\`](${url(`/accounts/${account.id}`)}) ${message}\n[${group.name}](${url(`/groups/${group.id}`)})\n<t:1698866460:R>`)
             .setColor(color)
+            .setThumbnail(url(`/cdn/avatars/${account.id}`))
             .setTimestamp(new Date());
 
         this.groupWebhook.send({

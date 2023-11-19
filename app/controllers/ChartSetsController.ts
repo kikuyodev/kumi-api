@@ -6,6 +6,11 @@ import NoPermissionException from "App/exceptions/NoPermissionException";
 import { Permissions } from "App/util/Constants";
 import Database from "@ioc:Adonis/Lucid/Database";
 import { ChartStatus } from "App/models/Chart";
+import { rules, schema, validator } from "@ioc:Adonis/Core/Validator";
+import MeiliSearch from "App/services/MeiliSearch";
+import ChartModdingEvent from "../models/ChartModdingEvent";
+import Comment, { CommentSourceType } from "../models/Comment";
+import CommentsController from "./CommentsController";
 
 export default class ChartSetsController {
     public async fetch({ request }: HttpContextContract) {
@@ -17,6 +22,61 @@ export default class ChartSetsController {
         }
 
         Logger.trace("fetching chart set", chartSet);
+
+        return {
+            code: 200,
+            data: {
+                set: chartSet.serialize()
+            }
+        };
+    }
+
+    public async modify({ request, auth }: HttpContextContract) {
+        const { id } = request.params();
+        const chartSet = await ChartSet.findBy("id", id);
+
+        if (!chartSet) {
+            throw new Exception("This set does not exist.", 404, "E_SET_NOT_FOUND");
+        }
+
+        // this is a destructive action, so we need to make sure
+        // that this endpoint is only accessible to users who have it
+        // it's only destructive because it relies on changing the
+        // files automatically too
+        if (!auth.user?.has(Permissions.MANAGE_CHART_METADATA)) {
+            throw new Exception("You do not have permission to modify this set.", 403, "E_NO_PERMISSION");
+        }
+
+        const payload = await request.validate({
+            schema: schema.create({
+                title: schema.string.optional(),
+                description: schema.string.optional(),
+                artist: schema.string.optional(),
+                source: schema.string.optional(),
+                status: schema.enum.optional(Object.values(ChartStatus))
+            })
+        });
+
+        if (payload.status) {
+            if (payload.status == ChartStatus.Qualified || payload.status == ChartStatus.Ranked) {
+                if (!auth.user?.has(Permissions.MANAGE_CHARTS)) {
+                    throw new Exception("You do not have permission to use these statuses.", 403, "E_NO_PERMISSION");
+                }
+            }
+
+            if (chartSet.status == ChartStatus.Qualified || chartSet.status == ChartStatus.Ranked) {
+                if (!auth.user?.has(Permissions.MANAGE_CHARTS)) {
+                    throw new Exception("You do not have permission to modify this set.", 403, "E_NO_PERMISSION");
+                }
+            }
+
+            chartSet.status = payload.status as ChartStatus;
+        }
+
+        // TODO: change metadata
+
+        await chartSet.save();
+        await chartSet.refresh();
 
         return {
             code: 200,
@@ -39,7 +99,7 @@ export default class ChartSetsController {
         }
 
         if (chartSet.status !== ChartStatus.Pending) {
-            throw new Exception("This set is not pending.", 400, "E_SET_NOT_PENDING");
+            throw new Exception("This set is not in pending status.", 400, "E_SET_NOT_PENDING");
         }
 
         if (chartSet.nominators.find((n) => n.id === auth.user?.id)) {
@@ -48,36 +108,274 @@ export default class ChartSetsController {
         }
 
         chartSet.related("nominators").attach([auth.user.id]);
-        chartSet.save();
-
-        const newChartSet = await ChartSet.findBy("id", id);
         
-        if (newChartSet!.nominators.length >= newChartSet!.attributes.nominators_required) {
+        if (chartSet!.nominators.length + 1 >= chartSet!.attributes.nominators_required) {
             // the set has enough nominators, so we can add it to the queue
-            newChartSet!.status = ChartStatus.Qualified;
+            chartSet!.status = ChartStatus.Qualified;
 
-            for (const chart of newChartSet!.charts) {
+            for (const chart of chartSet!.charts) {
                 chart.status = ChartStatus.Qualified;
                 chart.save();
             }
 
-            newChartSet!.save();
+            chartSet!.save();
 
             // ranked in 3 days
             const date = new Date();
             date.setDate(date.getDate() + 3);
 
             await Database.insertQuery().table("nomination_queue").insert({
-                set_id: newChartSet!.id,
+                set_id: chartSet!.id,
                 ranked_at: date
             });
         }
 
+        chartSet.save();
+        await chartSet.refresh();
+        await ChartModdingEvent.sendNominationEvent(chartSet, auth.user);
+
         return {
             code: 200,  
             data: {
-                set: newChartSet.serialize()
+                set: chartSet!.serialize()
             }
         };
     }
+
+    public async search({ request }: HttpContextContract) {
+        const searchPayload = request.only(["query", "page", "limit"]);
+        const validatedPayload = await validator.validate({
+            schema: schema.create({
+                query: schema.string(),
+                page: schema.number.optional(),
+                status: schema.enum.optional(Object.values(ChartStatus)),
+                limit: schema.number.optional([
+                    rules.range(1, 100)
+                ])
+            }),
+            data: searchPayload
+        });
+
+        const setIndex = MeiliSearch.index("chartsets");
+        const isFilterRegex = /\w([><!=]=?)\w/;
+        const filters = validatedPayload.query.split(" ").filter((q) => isFilterRegex.test(q) || q.includes("=="));
+        const query = validatedPayload.query.split(" ").filter((q) => !isFilterRegex.test(q));
+
+        for (const idx in filters) {
+            const x = filters[idx];
+            const y = isFilterRegex.exec(x);
+
+            if (x.includes("==")) {
+                filters[idx] = x.replace("==", "=");
+                continue;
+            }
+
+            // get the two sides of the filter
+            const sides = x.split(y![0]);
+            console.log(sides)
+
+            // remove any equals signs
+            sides[0] = sides[0].replace("=", "");
+            sides[1] = sides[1].replace("=", "");
+
+            // set the filter
+            filters[idx] = `${sides[0]}${y![0]}${sides[1]}`;
+        }
+
+        console.log({
+            limit: validatedPayload.limit ?? 50,
+            filter: filters.join(" AND "),
+            page: validatedPayload.page ?? 1,
+        })
+    
+        const results = await setIndex.search(query.join(" "), {
+            limit: validatedPayload.limit ?? 50,
+            filter: filters.join(" AND "),
+            page: validatedPayload.page ?? 1,
+        });
+
+        const charts = await ChartSet.findMany(results.hits.map((h) => h.id));
+
+        return {
+            code: 200,
+            data: {
+                results: charts.map((c) => c.serialize())
+            },
+            meta: {
+                total: results.totalHits,
+                per_page: results.hitsPerPage,
+                last_page: results.totalPages,
+                first_page: 1
+            }
+        };
+    }
+
+    public async fetchComments({ request, auth }: HttpContextContract) {
+        const { id } = request.params();
+        const chartSet = await ChartSet.findBy("id", id);
+
+        if (!chartSet) {
+            throw new Exception("This set does not exist.", 404, "E_SET_NOT_FOUND");
+        }
+
+        const comments = await Comment.query()
+            .where("source_id", chartSet.id).
+            where("source_type", CommentSourceType.ChartSet)
+
+        return {
+            code: 200,
+            data: {
+                comments: comments.filter((c) => c.parentId === null).map((c) => c.serialize())
+            },
+            meta: {
+                can_pin: auth.user?.has(Permissions.MODERATE_COMMENTS) || chartSet.creator.id === auth.user?.id,
+                comments: {
+                    ...comments.reduce((acc, c) => {
+                        return {
+                            ...acc,
+                            [c.id]: {
+                                can_edit: auth.user?.has(Permissions.MODERATE_COMMENTS) || c.authorId === auth.user?.id,
+                                can_delete: auth.user?.has(Permissions.MODERATE_COMMENTS) || c.authorId === auth.user?.id,
+                            }
+                        }
+                    }, {})
+                }
+            }
+        };
+    }
+
+    public async postComment({ request, auth }: HttpContextContract) {
+        const { id } = request.params();
+        const chartSet = await ChartSet.findBy("id", id);
+
+        if (!chartSet) {
+            throw new Exception("This set does not exist.", 404, "E_SET_NOT_FOUND");
+        }
+
+        const payload = await request.validate({
+            schema: schema.create({
+                message: schema.string(),
+                parent: schema.number.optional([
+                    rules.exists({
+                        table: "comments",
+                        column: "id"
+                    })
+                ]),
+                pinned: schema.boolean.optional()
+            })
+        })
+
+        const finalPayload: any = {
+            sourceId: chartSet.id,
+            sourceType: CommentSourceType.ChartSet,
+            authorId: auth.user!.id,
+            message: payload.message,
+        };
+
+        if (payload.pinned) {
+            if (!auth.user?.has(Permissions.MODERATE_COMMENTS) || chartSet.creator.id !== auth.user.id) {
+                throw new Exception("You do not have permission to pin this comment.", 403, "E_NO_PERMISSION");
+            }
+
+            if (payload.parent){
+                throw new Exception("You cannot pin a reply.", 400, "E_INVALID_PARENT");
+            }
+
+            finalPayload.pinned = true;
+        }
+
+        if (payload.parent) {
+            const parent = await Comment.findBy("id", payload.parent);
+
+            if (parent?.deleted) {
+                throw new Exception("You cannot reply to a deleted comment.", 400, "E_INVALID_PARENT");
+            }
+
+            finalPayload.parentId = payload.parent;
+        }
+
+        const comment = await Comment.create(finalPayload);
+
+        return {
+            code: 200,
+            data: {
+                comment: comment.serialize()
+            }
+        };
+    }
+
+    public async pinComment({ request, auth }: HttpContextContract) {
+        const { id, commentId } = request.params();
+        const chartSet = await ChartSet.findBy("id", id);
+        const comment = await Comment.findBy("id", commentId);
+
+        if (!chartSet) {
+            throw new Exception("This set does not exist.", 404, "E_SET_NOT_FOUND");
+        }
+
+        if (!comment) {
+            throw new Exception("This comment does not exist.", 404, "E_COMMENT_NOT_FOUND");
+        }
+
+        if (!auth.user?.has(Permissions.MODERATE_COMMENTS) && chartSet.creator.id !== auth.user?.id) {
+            throw new Exception("You do not have permission to pin this comment.", 403, "E_NO_PERMISSION");
+        }
+
+        comment.pinned = !comment.pinned;
+        await comment.save();
+
+        return {
+            code: 200,
+            data: {
+                comment: comment.serialize()
+            }
+        };
+    }
+
+    public async modifyComment({ request, auth }: HttpContextContract) {
+        const { id, commentId } = request.params();
+        const chartSet = await ChartSet.findBy("id", id);
+        const comment = await Comment.findBy("id", commentId);
+
+        if (!chartSet) {
+            throw new Exception("This set does not exist.", 404, "E_SET_NOT_FOUND");
+        }
+
+        if (!comment) {
+            throw new Exception("This comment does not exist.", 404, "E_COMMENT_NOT_FOUND");
+        }
+
+        if (comment.sourceId !== chartSet.id) {
+            throw new Exception("This comment does not belong to this set.", 400, "E_INVALID_COMMENT");
+        }
+
+        const payload = await request.validate({
+            schema: schema.create({
+                message: schema.string(),
+            })
+        })
+
+        return await CommentsController.modifyComment(comment, auth, payload.message);
+    }
+
+    public async deleteComment({ request, auth }: HttpContextContract) {
+        const { id, commentId } = request.params();
+        const chartSet = await ChartSet.findBy("id", id);
+        const comment = await Comment.findBy("id", commentId);
+
+        if (!chartSet) {
+            throw new Exception("This set does not exist.", 404, "E_SET_NOT_FOUND");
+        }
+
+        if (!comment) {
+            throw new Exception("This comment does not exist.", 404, "E_COMMENT_NOT_FOUND");
+        }
+
+        if (comment.sourceId !== chartSet.id) {
+            throw new Exception("This comment does not belong to this set.", 400, "E_INVALID_COMMENT");
+        }
+
+        return await CommentsController.deleteComment(comment, auth);
+    }
+        
 }
