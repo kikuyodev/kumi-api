@@ -2,7 +2,7 @@ import Logger from "@ioc:Adonis/Core/Logger";
 import { Exception } from "@adonisjs/core/build/standalone";
 import Account from "../../models/Account";
 import { StreamZipAsync } from "node-stream-zip";
-import { ChartStatus } from "App/models/Chart";
+import { ChartStatus } from "App/models/charts/Chart";
 import { unlinkSync } from "fs";
 
 const KCH_HEADER = Buffer.from("#KUMI CHART FORMAT v1");
@@ -245,6 +245,8 @@ export class ChartParser {
                 chartData.music = await set.entryData(chartData.chart.musicFile);
                 chartData.musicFile = chartData.chart.musicFile;
                 chartData.background = await set.entryData(chartData.expectedBackgroundFile);
+
+                console.log(chartData);
 
                 charts.push(chartData);
             } catch (e: any) {

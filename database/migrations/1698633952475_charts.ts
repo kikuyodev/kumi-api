@@ -1,6 +1,6 @@
 import BaseSchema from "@ioc:Adonis/Lucid/Schema";
-import { DEFAULT_ATTRIBUTES } from "App/models/ChartSet";
-import { DEFAULT_STATISTICS } from "../../app/models/Chart";
+import { DEFAULT_ATTRIBUTES } from "App/models/charts/ChartSet";
+import { DEFAULT_STATISTICS } from "../../app/models/charts/Chart";
 
 export default class extends BaseSchema {
   public async up () {

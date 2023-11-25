@@ -1,4 +1,4 @@
-import { BaseModel, ManyToMany, afterFetch, afterFind, beforeSave, column, computed, manyToMany } from "@ioc:Adonis/Lucid/Orm";
+import { BaseModel, HasMany, ManyToMany, ModelQueryBuilderContract, afterFetch, afterFind, beforeFind, beforeSave, column, computed, hasMany, manyToMany } from "@ioc:Adonis/Lucid/Orm";
 import Hash from "@ioc:Adonis/Core/Hash";
 import Group from "App/models/Group";
 import { DateTime } from "luxon";
@@ -7,6 +7,13 @@ import Badge from "App/models/Badge";
 import { TCountryCode, getCountryData } from "countries-list";
 import Database from "@ioc:Adonis/Lucid/Database";
 import WebsocketService from "../services/WebsocketService";
+import ChartSet from "./charts/ChartSet";
+import ForumPost from "./forums/ForumPost";
+
+function GET_MAX_EXP(level: number) {
+    level = level + 1;
+    return Math.floor(5 / 6 * level * (2 * level * level + 27 * level + 91));
+}
 
 export const DEFAULT_ATTRIBUTES: AccountAttributes = {
 };
@@ -159,6 +166,38 @@ export default class Account extends BaseModel {
         }
     }
 
+    @column({
+        serializeAs: null,
+        columnName: "forum_level"
+    })
+    public forumLevel: number;
+
+    @column({
+        serializeAs: null,
+        columnName: "forum_exp"
+    })
+    public forumExp: number;
+
+    @column({
+        serializeAs: null,
+        columnName: "forum_reputation"
+    })
+    public forumReputation: number;
+
+    @computed({
+        serializeAs: "forum_statistics"
+    })
+    public get forumStatistics() {
+        return {
+            level: this.forumLevel,
+            total_exp: this.forumExp,
+            max_exp: GET_MAX_EXP(this.forumLevel),
+            exp_progress: (this.forumExp / GET_MAX_EXP(this.forumLevel)) * 100,
+            reputation: this.forumReputation,
+            posts: parseInt(this.$extras.posts_count)
+        };
+    }
+
     @manyToMany(() => Group, {
         localKey: "id",
         pivotForeignKey: "account_id",
@@ -180,6 +219,21 @@ export default class Account extends BaseModel {
         pivotTable: "badge_owners"
     }) 
     public badges: ManyToMany<typeof Badge>;
+
+    @manyToMany(() => ChartSet, {
+        localKey: "id",
+        pivotForeignKey: "account_id",
+        relatedKey: "id",
+        pivotRelatedForeignKey: "set_id",
+        pivotTable: "chart_set_nominations"
+    })
+    public nominations: ManyToMany<typeof ChartSet>;
+
+    @hasMany(() => ForumPost, {
+        foreignKey: "authorId",
+        localKey: "id"
+    })
+    public posts: HasMany<typeof ForumPost>;
 
     @beforeSave()
     public static async hashPassword(account: Account) {
@@ -207,6 +261,12 @@ export default class Account extends BaseModel {
     @computed()
     public get status() {
         return WebsocketService.accountConnections.has(this.id) ? "online" : "offline";
+    }
+    
+    @beforeFind()
+    public static async preloadQuery(query: ModelQueryBuilderContract<typeof Account>) {
+        // get post count
+        query.withCount("posts").as("post_count");
     }
 
     @afterFetch()
@@ -272,5 +332,26 @@ export default class Account extends BaseModel {
             },
             ...history
         ];
+    }
+
+    public async giveExp(exp: number) {
+        const query = await Database.rawQuery(`
+            UPDATE accounts
+            SET forum_exp = forum_exp + ?
+            WHERE id = ?
+        `, [exp, this.id]);
+
+        this.forumExp += exp;
+
+        if (this.forumExp >= GET_MAX_EXP(this.forumLevel)) {
+            // level up
+            const query = await Database.rawQuery(`
+                UPDATE accounts
+                SET forum_level = forum_level + 1
+                WHERE id = ?
+            `, [this.id]);
+
+            this.forumLevel += 1;
+        }
     }
 }

@@ -11,6 +11,7 @@ import Logger from "@ioc:Adonis/Core/Logger";
 import WebhookService from "App/services/WebhookService";
 import geoip from "geoip-lite";
 import { TCountryCode } from "countries-list";
+import ChartSet from "../models/charts/ChartSet";
 
 // schema for modifying an account
 const groupIdSchema = schema.array.optional().members(schema.number([
@@ -41,6 +42,33 @@ const modifySchema = schema.create({
 });
 
 export default class AccountsController {
+    public async index({ request, auth }: HttpContextContract) {
+        const accountSearchLimit = auth.user?.has(Permissions.MANAGE_ACCOUNTS) ? 1000 : 10;
+
+        const payload = await request.validate({
+            schema: schema.create({
+                page: schema.number.optional(),
+                limit: schema.number.optional([
+                    rules.range(1, accountSearchLimit)
+                ])
+            })
+        });
+
+        const accounts = await Account.query().paginate(payload.page ?? 1, payload.limit ?? 10)
+        accounts.baseUrl("/api/v1/accounts");
+
+        if (auth.user?.has(Permissions.MANAGE_ACCOUNTS)) {
+            // TODO: load admin only data when we have any
+        }
+
+        Logger.trace("accounts fetched", { count: accounts.length });
+
+        return {
+            code: 200,
+            ...accounts.serialize()
+        };
+    }
+
     public async fetch({ request, auth }: HttpContextContract) {
         const { id } = request.params();
         const account = await Account.find(id ?? auth.user?.id);
@@ -69,30 +97,25 @@ export default class AccountsController {
         };
     }
 
-    public async fetchAll({ request, auth }: HttpContextContract) {
-        const accountSearchLimit = auth.user?.has(Permissions.MANAGE_ACCOUNTS) ? 1000 : 10;
+    public async fetchUserCharts({ request, auth }) {
+        const { id } = request.params();
+        const account = await Account.find(id ?? auth.user?.id);
 
-        const payload = await request.validate({
-            schema: schema.create({
-                page: schema.number.optional(),
-                limit: schema.number.optional([
-                    rules.range(1, accountSearchLimit)
-                ])
-            })
-        });
+        if (!account)
+            throw new Exception("This account does not exist.", 404, "E_ACCOUNT_NOT_FOUND");
 
-        const accounts = await Account.query().paginate(payload.page ?? 1, payload.limit ?? 10)
-        accounts.baseUrl("/api/v1/accounts");
+        const charts = await ChartSet.query()
+            .where("creator_id", account.id)
+            .orderBy("updated_at", "desc");
 
-        if (auth.user?.has(Permissions.MANAGE_ACCOUNTS)) {
-            // TODO: load admin only data when we have any
-        }
-
-        Logger.trace("accounts fetched", { count: accounts.length });
+        await account.load("nominations");
 
         return {
             code: 200,
-            ...accounts.serialize()
+            data: {
+                charts: charts.map((chart) => chart.serialize()),
+                nominations: account.nominations.map((nomination) => nomination.serialize())
+            }
         };
     }
 
@@ -385,6 +408,7 @@ export default class AccountsController {
         }
 
         return {
+            is_admin: account.has(Permissions.MANAGE_ACCOUNTS),
             can_restrict: account.has(Permissions.MODERATE_ACCOUNTS) && (
                 (account.groups[0]?.priority ?? 0) > (target.groups[0]?.priority ?? 0)
             ),

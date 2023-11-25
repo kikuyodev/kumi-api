@@ -6,8 +6,8 @@ import { ffmpeg, probe } from "eloquent-ffmpeg";
 import { createHash } from "crypto";
 import MeiliSearch from "App/services/MeiliSearch";
 import Account from "../../models/Account";
-import Chart, { ChartStatus } from "../../models/Chart";
-import ChartSet from "../../models/ChartSet";
+import Chart, { ChartStatus } from "../../models/charts/Chart";
+import ChartSet from "../../models/charts/ChartSet";
 
 export class ChartProcessor {
     public static async initCharts(databaseSet: ChartSet, charts: Chart[], chartsToCreate: any[], user: Account) {

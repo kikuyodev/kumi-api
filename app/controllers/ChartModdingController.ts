@@ -1,12 +1,13 @@
 import { Exception } from "@adonisjs/core/build/standalone";
 import { HttpContextContract } from "@ioc:Adonis/Core/HttpContext";
 import { schema, rules } from "@ioc:Adonis/Core/Validator";
-import Chart, { ChartStatus } from "App/models/Chart";
-import ChartModdingPost, { ChartModdingPostStatus, ChartModdingPostType } from "App/models/ChartModdingPost";
-import ChartSet from "App/models/ChartSet";
+import Chart, { ChartStatus } from "App/models/charts/Chart";
+import ChartModdingPost, { ChartModdingPostStatus, ChartModdingPostType } from "App/models/charts/ChartModdingPost";
+import ChartSet from "App/models/charts/ChartSet";
 import { Permissions } from "App/util/Constants";
-import ChartModdingEvent from "../models/ChartModdingEvent";
+import ChartModdingEvent from "../models/charts/ChartModdingEvent";
 import { DateTime } from "luxon";
+import { ChartProcessor } from "../structures/charts/ChartProcessor";
 
 export default class ChartModdingsController {
     public async fetchAll({ request, auth }: HttpContextContract) {
@@ -241,7 +242,7 @@ export default class ChartModdingsController {
         }
 
         if (finalPayload.type === ChartModdingPostType.Problem) {
-            if (auth.user?.has(Permissions.NOMINATE_CHARTS)) {
+            if (auth.user?.has(Permissions.DISQUALIFY_CHARTS)) {
                 // reset the nomination status of the chart
                 await ChartModdingEvent.sendDisqualificationEvent(chartSet, auth.user!);
                 
@@ -259,7 +260,9 @@ export default class ChartModdingsController {
                         chart.save();
                     }
     
+                    chartSet.rankedOn = null;
                     await chartSet.save();
+                    await ChartProcessor.indexChartSet(chartSet);
                 }
             } else {
                 // do nothing

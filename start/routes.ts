@@ -25,15 +25,17 @@ Route.group(() => {
 	Route.group(() => {
 		// /api/v1/accounts
 		Route.group(() => {
-			Route.post("/register", "AccountsController.register");
-			Route.post("/login", "AccountsController.login");
-			Route.get("/", "AccountsController.fetchAll").middleware("auth:web,api");
+			Route.get("/", "AccountsController.index").middleware("auth:web,api");
 			Route.get("/me", "AccountsController.fetch").middleware("auth:web").middleware("allow:web");
 			Route.patch("/me", "AccountsController.modifySelf").middleware("auth:web").middleware("allow:web");
+			Route.get("/me/chartsets", "AccountsController.fetchUserCharts").middleware("auth:web").middleware("allow:web");
 			Route.get("/me/settings", "AccountsController.fetchSettings").middleware("auth:web").middleware("allow:web");
 			Route.patch("/me/settings", "AccountsController.modifySettings").middleware("auth:web").middleware("allow:web");
+			Route.post("/login", "AccountsController.login");
+			Route.post("/register", "AccountsController.register");
 			Route.get("/:id", "AccountsController.fetch").where("id", Route.matchers.number());
 			Route.patch("/:id", "AccountsController.modify").where("id", Route.matchers.number()).middleware("auth:web,api");
+			Route.get("/:id/chartsets", "AccountsController.fetchUserCharts");
 		}).prefix("/accounts");
 		
 		// /api/v1/groups
@@ -84,6 +86,45 @@ Route.group(() => {
 			Route.put("/:id/join", "ChatController.join").middleware("auth:web");
 			Route.post("/:id/send", "ChatController.send").middleware("auth:web");
 		}).prefix("/chat");
+
+		// /api/v1/forums
+		Route.group(() => {
+			Route.get("/", "ForumsController.index");
+			Route.post("/", "ForumsController.create").middleware("auth:web,api");
+
+			// /api/v1/forums/:id
+			Route.group(() => {
+				Route.get("/", "ForumsController.fetch");
+				Route.patch("/", "ForumsController.modify").middleware("auth:web,api");
+				Route.delete("/", "ForumsController.delete").middleware("auth:web,api");
+				Route.get("/threads", "ForumThreadsController.index");
+				Route.post("/threads", "ForumThreadsController.create").middleware("auth:web,api");
+			}).prefix("/:id").where("id", Route.matchers.number());
+
+			// just for ease of use
+			// /api/v1/forums/threads
+			Route.get("/threads/:threadId", "ForumThreadsController.fetch");
+			Route.patch("/threads/:threadId", "ForumThreadsController.modify").middleware("auth:web,api");
+			Route.delete("/threads/:threadId", "ForumThreadsController.delete").middleware("auth:web,api");
+			Route.get("/threads/:threadId/posts", "ForumThreadsController.indexPosts");
+			Route.post("/threads/:threadId/posts", "ForumThreadsController.reply").middleware("auth:web,api");
+			Route.patch("/threads/:threadId/posts/:postId", "ForumThreadsController.modifyPost").middleware("auth:web,api");
+			Route.delete("/threads/:threadId/posts/:postId", "ForumThreadsController.deletePost").middleware("auth:web,api");
+		}).prefix("/forums");
+		
+		// /api/v1/wiki
+		Route.group(() => {
+			Route.get("/:language/*", "WikiController.fetch");
+		}).prefix("/wiki");
+
+		// /api/v1/news
+		Route.group(() => {
+			Route.get("/", "NewsController.index");
+			Route.get("/:slug", "NewsController.fetch");
+		}).prefix("/news");
+
+		Route.get("/notifications", "NotificationsController.fetch").middleware("auth:web,api");
+		Route.get("/meta/stats", "MetaController.stats");
 	}).prefix("/v1");
 }).prefix("/api").middleware("silent:web,api");
 

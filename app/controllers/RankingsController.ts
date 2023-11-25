@@ -27,7 +27,10 @@ export default class RankingsController {
 
         return {
             code: 200,
-            ...accounts.serialize()
+            data: {
+                rankings: accounts.serialize().data
+            },
+            meta: accounts.serialize().meta
         };
     }
 }

@@ -1,6 +1,6 @@
 import { Exception } from "@adonisjs/core/build/standalone";
 import { HttpContextContract } from "@ioc:Adonis/Core/HttpContext";
-import Chart from "App/models/Chart";
+import Chart from "App/models/charts/Chart";
 
 export default class ChartsController {
     public async fetch({ request }: HttpContextContract) {

@@ -1,16 +1,18 @@
 import { Exception } from "@adonisjs/core/build/standalone";
 import { HttpContextContract } from "@ioc:Adonis/Core/HttpContext";
-import ChartSet from "App/models/ChartSet";
+import ChartSet from "App/models/charts/ChartSet";
 import Logger from "@ioc:Adonis/Core/Logger";
 import NoPermissionException from "App/exceptions/NoPermissionException";
 import { Permissions } from "App/util/Constants";
 import Database from "@ioc:Adonis/Lucid/Database";
-import { ChartStatus } from "App/models/Chart";
+import { ChartStatus } from "App/models/charts/Chart";
 import { rules, schema, validator } from "@ioc:Adonis/Core/Validator";
 import MeiliSearch from "App/services/MeiliSearch";
-import ChartModdingEvent from "../models/ChartModdingEvent";
+import ChartModdingEvent from "../models/charts/ChartModdingEvent";
 import Comment, { CommentSourceType } from "../models/Comment";
 import CommentsController from "./CommentsController";
+import { ChartProcessor } from "../structures/charts/ChartProcessor";
+import { DateTime } from "luxon";
 
 export default class ChartSetsController {
     public async fetch({ request }: HttpContextContract) {
@@ -118,7 +120,9 @@ export default class ChartSetsController {
                 chart.save();
             }
 
-            chartSet!.save();
+            chartSet.rankedOn = DateTime.now();
+            await chartSet!.save();
+            await ChartProcessor.indexChartSet(chartSet);
 
             // ranked in 3 days
             const date = new Date();
@@ -146,7 +150,7 @@ export default class ChartSetsController {
         const searchPayload = request.only(["query", "page", "limit"]);
         const validatedPayload = await validator.validate({
             schema: schema.create({
-                query: schema.string(),
+                query: schema.string.optional(),
                 page: schema.number.optional(),
                 status: schema.enum.optional(Object.values(ChartStatus)),
                 limit: schema.number.optional([
@@ -155,6 +159,8 @@ export default class ChartSetsController {
             }),
             data: searchPayload
         });
+
+        validatedPayload.query = validatedPayload.query ?? "";
 
         const setIndex = MeiliSearch.index("chartsets");
         const isFilterRegex = /\w([><!=]=?)\w/;
@@ -234,6 +240,7 @@ export default class ChartSetsController {
                         return {
                             ...acc,
                             [c.id]: {
+                                can_reply: auth.user !== undefined && !c.deleted,
                                 can_edit: auth.user?.has(Permissions.MODERATE_COMMENTS) || c.authorId === auth.user?.id,
                                 can_delete: auth.user?.has(Permissions.MODERATE_COMMENTS) || c.authorId === auth.user?.id,
                             }
@@ -277,7 +284,7 @@ export default class ChartSetsController {
                 throw new Exception("You do not have permission to pin this comment.", 403, "E_NO_PERMISSION");
             }
 
-            if (payload.parent){
+            if (payload.parent) {
                 throw new Exception("You cannot pin a reply.", 400, "E_INVALID_PARENT");
             }
 

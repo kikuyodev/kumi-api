@@ -1,7 +1,7 @@
 import { HttpContextContract } from "@ioc:Adonis/Core/HttpContext";
 import Drive from "@ioc:Adonis/Core/Drive";
 import Logger from "@ioc:Adonis/Core/Logger";
-import ChartSet from "App/models/ChartSet";
+import ChartSet from "App/models/charts/ChartSet";
 import sharp from "sharp";
 import { Readable } from "node:stream";
 import { Exception } from "@adonisjs/core/build/standalone";

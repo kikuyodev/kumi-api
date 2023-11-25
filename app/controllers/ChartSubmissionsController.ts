@@ -2,8 +2,8 @@ import Application from "@ioc:Adonis/Core/Application";
 import Drive from "@ioc:Adonis/Core/Drive";
 import { HttpContextContract } from "@ioc:Adonis/Core/HttpContext";
 import { schema } from "@ioc:Adonis/Core/Validator";
-import Chart, { ChartStatus } from "App/models/Chart";
-import ChartSet from "App/models/ChartSet";
+import Chart, { ChartStatus } from "App/models/charts/Chart";
+import ChartSet from "App/models/charts/ChartSet";
 import StreamZip from "node-stream-zip";
 import { createHash } from "crypto";
 import { Exception } from "@adonisjs/core/build/standalone";
@@ -21,7 +21,7 @@ export default class ChartSubmissionsController {
         const basis = charts[0];
         let databaseSet: ChartSet | null = null;
 
-        if (!basis) {
+        if (!basis || charts.length === 0) {
             throw new Exception("The provided chart set does not contain any charts.", 400, "E_NO_CHARTS_PROVIDED");
         }
 

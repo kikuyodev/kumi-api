@@ -36,6 +36,8 @@
     "@adonisjs/lucid": "^18.4.2",
     "@adonisjs/repl": "^3.1.11",
     "@adonisjs/session": "^6.4.0",
+    "@octokit/auth-token": "^4.0.0",
+    "@octokit/rest": "^20.0.2",
     "adonis5-scheduler": "^2.1.1",
     "countries-list": "^3.0.6",
     "discord.js": "^14.13.0",

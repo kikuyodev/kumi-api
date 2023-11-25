@@ -1,6 +1,6 @@
 import { BaseModel, HasMany, HasOne, ManyToMany, afterFetch, afterFind, afterSave, afterUpdate, column, hasMany, hasOne, manyToMany } from "@ioc:Adonis/Lucid/Orm";
 import Account from "App/models/Account";
-import Chart, { ChartRomanisedMetadata, ChartStatus } from "App/models/Chart";
+import Chart, { ChartRomanisedMetadata, ChartStatus } from "App/models/charts/Chart";
 import { DateTime } from "luxon";
 
 /// The minimum number of nominators required to nominate a set.

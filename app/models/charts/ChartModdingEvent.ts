@@ -1,7 +1,7 @@
 import { BaseModel, HasOne, afterFetch, column, hasOne } from "@ioc:Adonis/Lucid/Orm";
 import Account from "App/models/Account";
-import ChartModdingPost from "App/models/ChartModdingPost";
-import ChartSet from "App/models/ChartSet";
+import ChartModdingPost from "App/models/charts/ChartModdingPost";
+import ChartSet from "App/models/charts/ChartSet";
 import { DateTime } from "luxon";
 
 export enum ChartEventType {

@@ -1,6 +1,6 @@
 import { BaseModel, HasOne, ManyToMany, afterFetch, afterFind, column, hasOne, manyToMany } from "@ioc:Adonis/Lucid/Orm";
 import Account from "App/models/Account";
-import ChartSet from "App/models/ChartSet";
+import ChartSet from "App/models/charts/ChartSet";
 import { DateTime } from "luxon";
 
 export enum ChartStatus {
@@ -82,7 +82,7 @@ export default class Chart extends BaseModel {
     @column()
     public tags: string;
 
-    /**
+    /**f
      * The source material of the chart's song.
      */
     @column()

@@ -15,6 +15,7 @@ export default class AppProvider {
 			await import("../start/webhook");
 			await import("../start/socket");
 			await import("../start/meilisearch");
+			await import("../start/wiki");
 		}
 	}
 

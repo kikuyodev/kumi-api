@@ -1,7 +1,7 @@
 import { BaseModel, HasMany, HasOne, PreloaderContract, afterCreate, afterFetch, afterFind, column, computed, hasMany, hasOne } from "@ioc:Adonis/Lucid/Orm";
 import { DateTime } from "luxon";
 import Account from "./Account";
-import ChartSet from "./ChartSet";
+import ChartSet from "./charts/ChartSet";
 
 export enum CommentSourceType {
     ChartSet
