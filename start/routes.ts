@@ -31,8 +31,11 @@ Route.group(() => {
 			Route.get("/me/chartsets", "AccountsController.fetchUserCharts").middleware("auth:web").middleware("allow:web");
 			Route.get("/me/settings", "AccountsController.fetchSettings").middleware("auth:web").middleware("allow:web");
 			Route.patch("/me/settings", "AccountsController.modifySettings").middleware("auth:web").middleware("allow:web");
+			
 			Route.post("/login", "AccountsController.login");
+			Route.post("/logout", "AccountsController.logout").middleware("auth:web");
 			Route.post("/register", "AccountsController.register");
+
 			Route.get("/:id", "AccountsController.fetch").where("id", Route.matchers.number());
 			Route.patch("/:id", "AccountsController.modify").where("id", Route.matchers.number()).middleware("auth:web,api");
 			Route.get("/:id/chartsets", "AccountsController.fetchUserCharts");
@@ -40,7 +43,10 @@ Route.group(() => {
 		
 		// /api/v1/groups
 		Route.group(() => {
+			Route.get("/", "GroupsController.index");
+			Route.get("/members", "GroupsController.indexGroupsWithMembers");
 			Route.get("/:id", "GroupsController.fetch").where("id", Route.matchers.number());
+			Route.get("/:id/members", "GroupsController.fetchMembers").where("id", Route.matchers.number());
 		}).prefix("/groups");
 
 		// /api/v1/charts

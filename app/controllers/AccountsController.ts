@@ -398,6 +398,19 @@ export default class AccountsController {
             });
         }
     }
+    
+    public async logout({ auth }: HttpContextContract) {
+        const account = auth.user!;
+
+        await auth.use("web").logout();
+
+        Logger.trace("account logged out", { id: account.id, username: account.username });
+
+        return {
+            code: 200,
+            message: "Logout successful"
+        };
+    }
 
     private provideFetchMetadata(account: Account, target: Account) {
         if (!account) {

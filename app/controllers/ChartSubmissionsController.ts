@@ -10,6 +10,7 @@ import { Exception } from "@adonisjs/core/build/standalone";
 import Logger from "@ioc:Adonis/Core/Logger";
 import { ChartParser } from "../structures/charts/ChartParser";
 import { ChartProcessor } from "../structures/charts/ChartProcessor";
+import { DateTime } from "luxon";
 
 export default class ChartSubmissionsController {
     public static CHART_VERSION = 0;
@@ -253,7 +254,10 @@ export default class ChartSubmissionsController {
         const chartsToRemove = existingSet.charts.filter((chart) => !seenIds.includes(chart.id));
 
         if (chartsToRemove.length > 0) {
-            await Chart.query().whereIn("id", chartsToRemove.map((chart) => chart.id)).delete();
+            for (const chartRemove of await Chart.query().whereIn("id", chartsToRemove.map((chart) => chart.id))) {
+                chartRemove.deletedAt = DateTime.now();
+                await chartRemove.save();
+            }
 
             // delete the file
             for (const chart of chartsToRemove) {

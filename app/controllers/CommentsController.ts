@@ -16,7 +16,6 @@ export default class CommentsController {
         }
 
         comment.deletedAt = DateTime.now();
-        comment.message = "";
 
         if (comment.authorId === comment.editorId) {
             comment.editorId = auth.user.id;

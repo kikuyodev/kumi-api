@@ -1,4 +1,4 @@
-import { BaseModel, HasOne, afterFetch, afterFind, column, hasOne } from "@ioc:Adonis/Lucid/Orm";
+import { BaseModel, HasOne, afterFetch, afterFind, column, computed, hasOne } from "@ioc:Adonis/Lucid/Orm";
 import Account from "../Account";
 import ForumThread from "./ForumThread";
 import { DateTime } from "luxon";
@@ -59,6 +59,22 @@ export default class ForumPost extends BaseModel {
         localKey: "editorId"
     })
     public editor: HasOne<typeof Account>;
+    
+    @column.dateTime({
+        columnName: "deleted_at",
+    })
+    public deletedAt: DateTime | null;
+
+    @computed()
+    public get edited() {
+        return this.updatedAt !== null;
+    }
+    
+    @computed()
+    public get deleted() {
+        return this.deletedAt !== null;
+    }
+
 
     @afterFetch()
     public static async loadThread(post: ForumPost[]) {

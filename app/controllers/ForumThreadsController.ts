@@ -88,7 +88,16 @@ export default class ForumTopicsController {
             throw new Exception("You do not have permission to view this thread", 403, "E_NO_PERMISSION");
         }
 
-        const posts = await ForumPost.query().where("threadId", thread.id).orderBy("created_at", "asc").paginate(payload.page ?? 1, payload.limit ?? 25);
+        const query = ForumPost.query()
+            .where("threadId", thread.id)
+            .orderBy("created_at", "asc");
+
+        if (!await thread.forum.can("moderate_forums", auth.user)) {
+            // omit deleted posts
+            query.whereNull("deleted_at");
+        }
+
+        const posts = await query.paginate(payload.page ?? 1, payload.limit ?? 25);
         posts.baseUrl(`/api/v1/forums/threads/${thread.id}/posts`);
 
         if (auth.user) {
@@ -150,7 +159,6 @@ export default class ForumTopicsController {
         if (!await thread.forum.can("view", auth.user)) {
             throw new Exception("You do not have permission to view this thread", 403, "E_NO_PERMISSION");
         }
-
 
         return {
             code: 200,
@@ -405,7 +413,7 @@ export default class ForumTopicsController {
             throw new Exception("Post not found", 404, "E_POST_NOT_FOUND");
         }
 
-        if (post.authorId !== auth.user?.id && !await post.thread.forum.can("moderate_forums", auth.user))  {
+        if (post.authorId !== auth.user?.id && !await post.thread.forum.can("moderate_forums", auth.user)) {
             throw new Exception("You do not have permission to delete this post", 403, "E_NO_PERMISSION");
         }
 
@@ -419,8 +427,8 @@ export default class ForumTopicsController {
 
         await thread.load("firstPost");
         if (thread.firstPost.id === post.id) {
-            await thread.delete();
-            
+            await thread.delete(); // TODO: use deleted at instead
+
             return {
                 code: 200,
                 data: {
@@ -430,7 +438,8 @@ export default class ForumTopicsController {
             };
         }
 
-        await post.delete();
+        post.deletedAt = DateTime.now();
+        await post.save();
 
         return {
             code: 200,

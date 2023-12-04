@@ -25,14 +25,16 @@ export default class ForumsController {
             throw new Exception("Forum not found", 404, "E_FORUM_NOT_FOUND");
         }
 
+        console.log("fetch");
+
         if (!await forum.can("view", auth.user)) {
             throw new Exception("You do not have permission to view this forum", 403, "E_NO_PERMISSION");
         }
-        
+
         return {
             code: 200,
             data: {
-                forum: await ForumsController.trueSerialize(forum)
+                forum: await ForumsController.trueSerialize(forum, auth.user)
             }
         };
     }
@@ -96,7 +98,7 @@ export default class ForumsController {
 
     public static async trueSerialize(forum: Forum, account?: Account) {
         // reshaping the forum object to be more useful
-        const newChildren: (Forum | undefined)[] = [];
+        const newChildren: (any | undefined)[] = [];
 
         if (forum.children) {
             for (const child of forum.children) {
@@ -109,7 +111,7 @@ export default class ForumsController {
             forum.children = newChildren;
         }
 
-        if (!await forum.can("post_threads", account)) {
+        if (!await forum.can("view", account)) {
             return undefined;
         }
 

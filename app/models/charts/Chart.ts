@@ -1,4 +1,4 @@
-import { BaseModel, HasOne, ManyToMany, afterFetch, afterFind, column, hasOne, manyToMany } from "@ioc:Adonis/Lucid/Orm";
+import { BaseModel, HasOne, ManyToMany, afterFetch, afterFind, column, computed, hasOne, manyToMany } from "@ioc:Adonis/Lucid/Orm";
 import Account from "App/models/Account";
 import ChartSet from "App/models/charts/ChartSet";
 import { DateTime } from "luxon";
@@ -159,6 +159,17 @@ export default class Chart extends BaseModel {
         columnName: "updated_at",
     })
     public updatedAt: DateTime;
+
+    @column.dateTime({
+        columnName: "deleted_at",
+    })
+    public deletedAt: DateTime | null;
+    
+    @computed()
+    public get deleted() {
+        return this.deletedAt !== null;
+    }
+
 
     @afterFind()
     public static async preloadRelationsSingle(chart: Chart) {

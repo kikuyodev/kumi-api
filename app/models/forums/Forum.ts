@@ -4,6 +4,7 @@ import ForumThread from "./ForumThread";
 import Account from "../Account";
 import { Permissions } from "../../util/Constants";
 import ForumPermission, { ForumPermissions } from "./ForumPermission";
+import Database from "@ioc:Adonis/Lucid/Database";
 
 export enum ForumFlags {
     Private = 1 << 0,
@@ -40,8 +41,8 @@ export default class Forum extends BaseModel {
     public parentId: number | null;
 
     @hasOne(() => Forum, {
-        localKey: "id",
-        foreignKey: "parentId"
+        localKey: "parentId",
+        foreignKey: "id"
     })
     public parent: HasOne<typeof Forum>;
     
@@ -88,8 +89,8 @@ export default class Forum extends BaseModel {
     public async is(flag: ForumFlags) {
         if (this.parentId && this.flags === 0) {
             // TODO: optimize sql queries
-            const parent = await Forum.find(this.parentId);
-            return await parent?.is(flag);
+            const parent = await Database.from("forums").where("id", this.parentId).first();
+            return ((parent?.flags ?? 0) & flag) === flag;
         }
 
         return (this.flags & flag) === flag;
@@ -98,6 +99,7 @@ export default class Forum extends BaseModel {
     public async can(what: CanUnion, account?: Account) {
         if (what === "view") {
             if (await this.is(ForumFlags.Private)) {
+                console.log(this.id, await this.has(ForumPermissions.CanView, account));
                 return await this.has(ForumPermissions.CanView, account);
             }
 
@@ -136,35 +138,12 @@ export default class Forum extends BaseModel {
         });
     }
 
-    public async reshape(account?: Account) {
-        // recursively go through all children and reshape them
-        // if they are not allowed to view, remove them
-        // etc
-        let forceVisible = false;
-        for (const child of this.children ?? []) {
-            child.reshape(account);
-
-            if (child.$extras.visible) {
-                // if the child is not private, then we can view it
-                // so we can view this category
-                forceVisible = true;
-            }
-        }
-
-        // set the extras
-        this.$extras.visible = true;
-        this.$extras.can_post_threads = false;
-
-        if (!forceVisible && !this.has(ForumPermissions.CanView, account)) {
-            this.$extras.visible = false;
-        }
-    }
-
-    public static async getPermissions(forum: Forum) {
-        const forumPermissions = await ForumPermission.query().where("forum_id", forum.id);
-
-        if (forum.parentId) {
-            const parentPermissions = await this.getPermissions(await Forum.find(forum.parentId) as Forum);
+    public static async getPermissions(id: number) {
+        const forumPermissions = await ForumPermission.query().where("forum_id", id);
+        const forum = await Database.from("forums").where("id", id).first();
+    
+        if (forum.parent_id) {
+            const parentPermissions = await this.getPermissions(forum.parent_id);
 
             // filter out permissions that are already in the child
             // child permissions override parent permissions
@@ -184,7 +163,7 @@ export default class Forum extends BaseModel {
     public static async afterFetchHook(categories: Forum[]) {
         for (const category of categories) {
             // @ts-expect-error
-            category.permissions = await Forum.getPermissions(category);
+            category.permissions = await Forum.getPermissions(category.id);
 
             await category.load((loader) => {
                 loader.load("children");
@@ -196,10 +175,17 @@ export default class Forum extends BaseModel {
     @afterFind()
     public static async afterFindHook(category: Forum) {
         // @ts-expect-error
-        category.permissions = await Forum.getPermissions(category);
-
+        category.permissions = await Forum.getPermissions(category.id);
         await category.load((loader) => {
+            if (category.parentId) {
+                loader.load("parent");
+            }
+
+            loader.load("children");
             loader.load("lastThread");
-        })
+
+        });
+
+        console.log(category.parent)
     }
 }

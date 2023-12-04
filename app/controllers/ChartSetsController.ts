@@ -224,9 +224,15 @@ export default class ChartSetsController {
             throw new Exception("This set does not exist.", 404, "E_SET_NOT_FOUND");
         }
 
-        const comments = await Comment.query()
-            .where("source_id", chartSet.id).
-            where("source_type", CommentSourceType.ChartSet)
+        const query = Comment.query()
+            .where("source_id", chartSet.id)
+            .where("source_type", CommentSourceType.ChartSet)
+
+        if (!auth.user?.has(Permissions.MODERATE_COMMENTS)) {
+            query.whereNull("deleted_at");
+        }
+
+        const comments = await query
 
         return {
             code: 200,

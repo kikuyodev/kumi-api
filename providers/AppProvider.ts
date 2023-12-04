@@ -1,5 +1,6 @@
 import type { ApplicationContract } from "@ioc:Adonis/Core/Application";
 import MeiliSearch from "App/services/MeiliSearch";
+import WikiGitService from "../app/services/WikiGitService";
 
 export default class AppProvider {
 	constructor(protected app: ApplicationContract) {
@@ -14,14 +15,17 @@ export default class AppProvider {
 		if (this.app.environment === "web") {
 			await import("../start/webhook");
 			await import("../start/socket");
-			await import("../start/meilisearch");
 			await import("../start/wiki");
+
+			await WikiGitService.refreshArticles();
+			await WikiGitService.refreshPosts();
 		}
 	}
 
 	public async ready() {
 		// create indexes for meilisearch
 		if (this.app.environment === "web") {
+			await import("../start/meilisearch");
 			MeiliSearch.index("chartsets").updateFilterableAttributes([
 				"status",
 				"creators",

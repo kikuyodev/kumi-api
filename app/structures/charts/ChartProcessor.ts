@@ -98,30 +98,4 @@ export class ChartProcessor {
         unlinkSync(file);
     }
 
-    public static async indexChartSet(chartSet: ChartSet) {
-        const index = MeiliSearch.index("chartsets");
-        const set =
-        {
-            id: chartSet.id,
-            artist: chartSet.artist,
-            artist_romanized: chartSet.romanisedMetadata?.artist_romanised,
-            title: chartSet.title,
-            title_romanized: chartSet.romanisedMetadata?.title_romanised,
-            source: chartSet.source,
-            source_romanized: chartSet.romanisedMetadata?.source_romanised,
-            tags: chartSet.tags,
-            status: Object.keys(ChartStatus).find((key) => ChartStatus[key] === chartSet.status),
-            creators: chartSet.charts.reduce((acc, chart) => {
-                const creators = chart.creators.map((creator) => creator.username);
-                acc.push(...creators.filter((creator) => !acc.includes(creator)));
-
-                return acc;
-            }, [] as string[]),
-            bpm: chartSet.charts[0]?.difficulty.bpms,
-            length: chartSet.charts[0]?.statistics.music_length,
-            drain: chartSet.charts[0]?.statistics.drain_length,
-        }
-
-        return index.updateDocuments([set]);
-    }
 }

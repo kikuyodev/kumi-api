@@ -1,4 +1,4 @@
-import { BaseModel, HasMany, ManyToMany, ModelQueryBuilderContract, afterFetch, afterFind, beforeFind, beforeSave, column, computed, hasMany, manyToMany } from "@ioc:Adonis/Lucid/Orm";
+import { BaseModel, HasMany, ManyToMany, ModelQueryBuilderContract, afterFetch, afterFind, beforeFetch, beforeFind, beforeSave, column, computed, hasMany, manyToMany } from "@ioc:Adonis/Lucid/Orm";
 import Hash from "@ioc:Adonis/Core/Hash";
 import Group from "App/models/Group";
 import { DateTime } from "luxon";
@@ -263,6 +263,7 @@ export default class Account extends BaseModel {
         return WebsocketService.accountConnections.has(this.id) ? "online" : "offline";
     }
     
+    @beforeFetch()
     @beforeFind()
     public static async preloadQuery(query: ModelQueryBuilderContract<typeof Account>) {
         // get post count

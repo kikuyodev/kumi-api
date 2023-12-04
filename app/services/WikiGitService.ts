@@ -11,7 +11,8 @@ class WikiGitService {
     public booted = false;
     private kit: Octokit;
 
-    public posts: NewsPost[] = [];
+    public posts: any[] = [];
+    public articles: any[] = [];
 
     async boot() {
         if (this.booted) {
@@ -69,11 +70,13 @@ class WikiGitService {
                     path: safePath,
                     title: safeTitle,
                     locale: locale,
-                    content: article.toString(),
+                    content: article.toString().replace(/---(.|\n)*---/, "").trim(),
                     configuration: await this.parseConfiguration(article)
                 });
             }
         }
+
+        this.articles = final;
 
         return final;
     }
@@ -119,16 +122,20 @@ class WikiGitService {
 
     private async parsePost(id: number, post: string, data: any) {
         const config = await this.parseConfiguration(post);
+        
+        // remove the configuration from the post
+        post = post.replace(/---(.|\n)*---/, "").trim();
 
         return {
             id: id,
             slug: data.name.replace(".md", ""),
             title: config["title"],
-            posted_at: config["date"],
+            posted_at: new Date(config["date"]),
             author: config["author"],
             content: post.toString(),
             headline: config["headline"],
             banner: config["banner"],
+            configuration: config
         }
     }
 

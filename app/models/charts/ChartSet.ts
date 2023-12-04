@@ -1,4 +1,4 @@
-import { BaseModel, HasMany, HasOne, ManyToMany, afterFetch, afterFind, afterSave, afterUpdate, column, hasMany, hasOne, manyToMany } from "@ioc:Adonis/Lucid/Orm";
+import { BaseModel, HasMany, HasOne, ManyToMany, afterFetch, afterFind, afterSave, afterUpdate, column, computed, hasMany, hasOne, manyToMany } from "@ioc:Adonis/Lucid/Orm";
 import Account from "App/models/Account";
 import Chart, { ChartRomanisedMetadata, ChartStatus } from "App/models/charts/Chart";
 import { DateTime } from "luxon";
@@ -160,9 +160,19 @@ export default class ChartSet extends BaseModel {
     public updatedAt: DateTime;
 
     @column.dateTime({
+        columnName: "deleted_at",
+    })
+    public deletedAt: DateTime | null;
+
+    @column.dateTime({
         columnName: "ranked_on",
     })
     public rankedOn: DateTime | null;
+
+    @computed()
+    public get deleted() {
+        return this.deletedAt !== null;
+    }
 
     @afterFind()
     @afterSave()

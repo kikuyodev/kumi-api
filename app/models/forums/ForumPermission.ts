@@ -22,23 +22,11 @@ export default class ForumPermission extends BaseModel {
     })
     public forumId: number;
 
-    @hasOne(() => Forum, {
-        localKey: "forumId",
-        foreignKey: "id"
-    })
-    public forum: HasOne<typeof Forum>;
-
     @column({
         serializeAs: null,
         columnName: "group_id"
     })
     public groupId: number;
-
-    @hasOne(() => Group, {
-        localKey: "groupId",
-        foreignKey: "id"
-    })
-    public group: HasOne<typeof Group>;
 
     @column()
     public permissions: number;

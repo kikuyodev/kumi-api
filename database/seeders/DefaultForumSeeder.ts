@@ -51,7 +51,7 @@ export default class extends BaseSeeder {
                 id: 7,
                 name: "Resolved Issues",
                 description: "The place for resolved issues.",
-                parentId: 7,
+                parentId: 6,
                 order: 1
             },
             {
@@ -83,7 +83,7 @@ export default class extends BaseSeeder {
             },
             {
                 id: 12,
-                name: "General Discussion",
+                name: "Other",
                 description: "The place for general discussion, and all other topics that don't fit into any other forum.",
                 order: 3
             },
@@ -112,7 +112,7 @@ export default class extends BaseSeeder {
                 id: 16,
                 name: "Forum Games",
                 description: "The place for forum games, and other polls and similar things.",
-                parentId: 15,
+                parentId: 14,
                 order: 1
             },
             {
