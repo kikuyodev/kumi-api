@@ -11,7 +11,7 @@ export enum ChartModdingPostType {
     Problem,
     Praise,
     Reply,
-    System
+    System,
 }
 
 export enum ChartModdingPostStatus {

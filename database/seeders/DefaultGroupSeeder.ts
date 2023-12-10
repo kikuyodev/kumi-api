@@ -119,7 +119,9 @@ import { Permissions } from "App/util/Constants";
  * if offered.
  */
 const qaPermissions = Permissions.DISQUALIFY_CHARTS;
+
 const cnPermissions = Permissions.NOMINATE_CHARTS | qaPermissions;
+
 const modPermissions = Permissions.MANAGE_GROUP_ASSIGNMENTS
 	| Permissions.MODERATE_ACCOUNTS
 	| Permissions.MODERATE_CHARTS
@@ -127,7 +129,8 @@ const modPermissions = Permissions.MANAGE_GROUP_ASSIGNMENTS
 	| Permissions.MODERATE_COMMENTS
 	| Permissions.MODERATE_FORUMS;
 const natPermissions = modPermissions | cnPermissions;
-const allPermissions = Object.values(Permissions).reduce((a, b) => a | b as number, 0);
+
+const allPermissions = Object.values(Permissions).reduce((a, b) => a | b as number, 0); // dev
 
 export default class extends BaseSeeder {
 	public async run() {
