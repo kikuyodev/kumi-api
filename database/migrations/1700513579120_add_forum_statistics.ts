@@ -1,4 +1,4 @@
-import BaseSchema from '@ioc:Adonis/Lucid/Schema'
+import BaseSchema from "@ioc:Adonis/Lucid/Schema";
 
 export default class extends BaseSchema {
 
@@ -7,7 +7,7 @@ export default class extends BaseSchema {
       table.integer("forum_level").unsigned().defaultTo(0);
       table.integer("forum_exp").unsigned().defaultTo(0);
       table.integer("forum_reputation").defaultTo(0);
-    })
+    });
   }
 
   public async down () {
@@ -15,6 +15,6 @@ export default class extends BaseSchema {
       table.dropColumn("forum_level");
       table.dropColumn("forum_exp");
       table.dropColumn("forum_reputation");
-    })
+    });
   }
 }

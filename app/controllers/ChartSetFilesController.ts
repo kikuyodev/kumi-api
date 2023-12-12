@@ -34,7 +34,7 @@ export default class ChartSetFilesController {
 
         Logger.trace(`serving background ${id} from ${background}`);
 
-        let stream = await Drive.get(background);
+        const stream = await Drive.get(background);
 
         if (format !== undefined && (format !== "orig" || format !== "original")) {
             const metadata = await sharp(stream).metadata();
@@ -73,11 +73,11 @@ export default class ChartSetFilesController {
                 const scalarValue = parseFloat(scalar);
 
                 if (isNaN(scalarValue))
-                    throw new Exception("Invalid scalar value", 400, "E_INVALID_SCALAR_VALUE")
+                    throw new Exception("Invalid scalar value", 400, "E_INVALID_SCALAR_VALUE");
                 if (scalarValue <= 0)
-                    throw new Exception("Scalar value must be greater than 0", 400, "E_INVALID_SCALAR_VALUE")
+                    throw new Exception("Scalar value must be greater than 0", 400, "E_INVALID_SCALAR_VALUE");
                 if (scalarValue > 3)
-                    throw new Exception("Scalar value must be less than or equal to 3", 400, "E_INVALID_SCALAR_VALUE")
+                    throw new Exception("Scalar value must be less than or equal to 3", 400, "E_INVALID_SCALAR_VALUE");
                 
                 size.width = Math.floor(size.width * scalarValue);
                 size.height = Math.floor(size.height * scalarValue);

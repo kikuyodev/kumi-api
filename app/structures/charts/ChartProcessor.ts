@@ -53,7 +53,7 @@ export class ChartProcessor {
             music_length: 0,
             notes: [],
             note_count: 0
-        }
+        };
 
         chart.statistics.music_length = probeResult.duration;
 
@@ -79,19 +79,19 @@ export class ChartProcessor {
 
         if (previewTime == 0) {
             previewTime = probeResult.duration * 0.4;
-            console.log(probeResult)
+            console.log(probeResult);
         }
 
-        const cmd = ffmpeg()
+        const cmd = ffmpeg();
 
         cmd
             .input(file)
             .start(previewTime)
-            .duration(10000)
+            .duration(10000);
         
         cmd.output(Application.tmpPath(`files/previews/${setId}.${probeResult.format}`));
 
-        const proc = await cmd.spawn()
+        const proc = await cmd.spawn();
         await proc.complete();
 
         // delete the temporary file

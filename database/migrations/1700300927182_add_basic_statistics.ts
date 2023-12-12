@@ -1,4 +1,4 @@
-import BaseSchema from "@ioc:Adonis/Lucid/Schema"
+import BaseSchema from "@ioc:Adonis/Lucid/Schema";
 
 export default class extends BaseSchema {
 
@@ -9,7 +9,7 @@ export default class extends BaseSchema {
       table.integer("total_playtime").defaultTo(0);
       table.integer("total_playcount").defaultTo(0);
       table.integer("maximum_combo").defaultTo(0);
-    })
+    });
   }
 
   public async down () {
@@ -19,6 +19,6 @@ export default class extends BaseSchema {
       table.dropColumn("total_playtime");
       table.dropColumn("total_playcount");
       table.dropColumn("maximum_combo");
-    })
+    });
   }
 }

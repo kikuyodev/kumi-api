@@ -16,7 +16,7 @@ export default class ChartSubmissionsController {
     public static CHART_VERSION = 0;
 
     public async submit(ctx: HttpContextContract) {
-        const { request, auth } = ctx;
+        const { request, authorization } = ctx;
         const charts = await this.validateAndParseChartSet(ctx);
 
         const basis = charts[0];
@@ -138,7 +138,7 @@ export default class ChartSubmissionsController {
     }
 
     public async update(ctx: HttpContextContract) {
-        const { request, auth } = ctx;
+        const { request, authorization } = ctx;
         const charts = await this.validateAndParseChartSet(ctx);
         const basis = charts[0];
 

@@ -42,8 +42,8 @@ const modifySchema = schema.create({
 });
 
 export default class AccountsController {
-    public async index({ request, auth }: HttpContextContract) {
-        const accountSearchLimit = auth.user?.has(Permissions.MANAGE_ACCOUNTS) ? 1000 : 10;
+    public async index({ request, authorization }: HttpContextContract) {
+        const accountSearchLimit = authorization.account?.has(Permissions.MANAGE_ACCOUNTS) ? 1000 : 10;
 
         const payload = await request.validate({
             schema: schema.create({
@@ -54,10 +54,10 @@ export default class AccountsController {
             })
         });
 
-        const accounts = await Account.query().paginate(payload.page ?? 1, payload.limit ?? 10)
+        const accounts = await Account.query().paginate(payload.page ?? 1, payload.limit ?? 10);
         accounts.baseUrl("/api/v1/accounts");
 
-        if (auth.user?.has(Permissions.MANAGE_ACCOUNTS)) {
+        if (authorization.account?.has(Permissions.MANAGE_ACCOUNTS)) {
             // TODO: load admin only data when we have any
         }
 
@@ -69,14 +69,14 @@ export default class AccountsController {
         };
     }
 
-    public async fetch({ request, auth }: HttpContextContract) {
+    public async fetch({ request, authorization }: HttpContextContract) {
         const { id } = request.params();
-        const account = await Account.find(id ?? auth.user?.id);
+        const account = await Account.find(id ?? authorization.account?.id);
 
         if (!account)
             throw new Exception("This account does not exist.", 404, "E_ACCOUNT_NOT_FOUND");
 
-        if (auth.user?.has(Permissions.MANAGE_ACCOUNTS)) {
+        if (authorization.account?.has(Permissions.MANAGE_ACCOUNTS)) {
             // get invisible data
         }
 
@@ -93,13 +93,13 @@ export default class AccountsController {
                     }
                 }
             },
-            meta: this.provideFetchMetadata(auth.user!, account)
+            meta: this.provideFetchMetadata(authorization.account!, account)
         };
     }
 
-    public async fetchUserCharts({ request, auth }) {
+    public async fetchUserCharts({ request, authorization }) {
         const { id } = request.params();
-        const account = await Account.find(id ?? auth.user?.id);
+        const account = await Account.find(id ?? authorization.account?.id);
 
         if (!account)
             throw new Exception("This account does not exist.", 404, "E_ACCOUNT_NOT_FOUND");
@@ -119,8 +119,8 @@ export default class AccountsController {
         };
     }
 
-    public async fetchSettings({ auth }: HttpContextContract) {
-        const account = auth.user!;
+    public async fetchSettings({ authorization }: HttpContextContract) {
+        const account = authorization.account!;
 
         // make sure settings are up to date
         if (account.settings.version !== DEFAULT_SETTINGS.version) {
@@ -143,8 +143,9 @@ export default class AccountsController {
     }
 
     public async modify(ctx: HttpContextContract) {
-        if (!ctx.auth.user?.has(Permissions.MANAGE_ACCOUNTS))
-            throw new NoPermissionException("MANAGE_ACCOUNTS");
+        console.log(ctx.authorization)
+        if (!ctx.authorization.account?.has(Permissions.MODERATE_ACCOUNTS))
+            throw new NoPermissionException("MODERATE_ACCOUNTS");
 
         const { id } = ctx.request.params();
         const account = await Account.find(id);
@@ -156,21 +157,21 @@ export default class AccountsController {
     }
 
     public async modifySelf(ctx: HttpContextContract) {
-        return await this.modifyAccount(ctx.auth.user!, ctx);
+        return await this.modifyAccount(ctx.authorization.account!, ctx);
     }
 
-    private async modifyAccount(account: Account, { request, response, auth }: HttpContextContract) {
+    private async modifyAccount(account: Account, { request, response, authorization }: HttpContextContract) {
         const payload = await request.validate({
             schema: modifySchema,
         });
 
-        const userPrimaryGroup = auth.user?.groups[0];
+        const userPrimaryGroup = authorization.account?.groups[0];
         const targetPrimaryGroup = account.groups[0];
 
         const changed: string[] = [];
 
         if ((targetPrimaryGroup?.priority ?? 0) >= (userPrimaryGroup?.priority ?? 0)) {
-            if (account.id === auth.user?.id) {
+            if (account.id === authorization.account?.id) {
                 // user is modifying themselves
             } else if (userPrimaryGroup?.identifier === "dev") {
                 // user is a developer and can modify anyone
@@ -212,8 +213,8 @@ export default class AccountsController {
         if (payload.groups) {
             for (const groupId of payload.groups.add ?? []) {
                 const group = await Group.findOrFail(groupId);
-                const userPrimaryGroup = auth.user?.groups[0];
-                const addMessage = auth.user?.id === account.id
+                const userPrimaryGroup = authorization.account?.groups[0];
+                const addMessage = authorization.account?.id === account.id
                     ? "You cannot yourself to a group with a higher priority than your primary group."
                     : "You cannot add a group to an account with a higher priority than your primary group.";
 
@@ -225,7 +226,7 @@ export default class AccountsController {
                     throw new Exception(addMessage, 400, "E_INVALID_GROUP_PRIORITY");
                 }
 
-                WebhookService.sendGroupMessage(group, account, true, auth.user?.id === account.id ? payload.reason : undefined);
+                WebhookService.sendGroupMessage(group, account, true, authorization.account?.id === account.id ? payload.reason : undefined);
                 await account.related("groups").attach([group.id]);
                 changed.push(`group:${group.id}`);
             }
@@ -233,7 +234,7 @@ export default class AccountsController {
             for (const groupId of payload.groups.remove ?? []) {
                 const group = await Group.findOrFail(groupId);
                 const userPrimaryGroup = account.groups[0];
-                const removeMessage = auth.user?.id === account.id
+                const removeMessage = authorization.account?.id === account.id
                     ? "You cannot yourself to a group with a higher priority than your primary group."
                     : "You cannot remove a group from an account with a higher priority than your primary group.";
                 
@@ -345,8 +346,24 @@ export default class AccountsController {
         };
     }
 
-    public async login({ request, response, auth }: HttpContextContract) {
-        try {
+    public async login({ request, response, authorization }: HttpContextContract) {
+        if (!request.hasBody()) {
+            return response.badRequest({
+                code: 400,
+                message: "Missing request body"
+            });
+        }
+
+        const body = await request.validate({
+            schema: schema.create({
+                username: schema.string(),
+                password: schema.string(),
+                remember: schema.boolean.optional()
+            })
+        });
+
+        return authorization.login(body.username, body.password);
+        /*try {
             if (await auth.use("web").check()) {
                 const account = auth.use("web").user;
 
@@ -369,13 +386,6 @@ export default class AccountsController {
             });
         }
 
-        const body = await request.validate({
-            schema: schema.create({
-                username: schema.string(),
-                password: schema.string(),
-                remember: schema.boolean.optional()
-            })
-        });
 
         try {
             const account = await auth.use("web").attempt(body.username, body.password, body.remember ?? false);
@@ -396,13 +406,13 @@ export default class AccountsController {
                 code: 400,
                 message: "Invalid credentials"
             });
-        }
+        }*/
     }
     
-    public async logout({ auth }: HttpContextContract) {
-        const account = auth.user!;
+    public async logout({ authorization }: HttpContextContract) {
+        const account = authorization.account!;
 
-        await auth.use("web").logout();
+        //await auth.use("web").logout();
 
         Logger.trace("account logged out", { id: account.id, username: account.username });
 
