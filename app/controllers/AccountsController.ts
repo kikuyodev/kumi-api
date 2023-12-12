@@ -363,50 +363,6 @@ export default class AccountsController {
         });
 
         return authorization.login(body.username, body.password);
-        /*try {
-            if (await auth.use("web").check()) {
-                const account = auth.use("web").user;
-
-                return {
-                    code: 200,
-                    message: "Login successful",
-                    data: {
-                        account: account?.serialize(),
-                    }
-                };
-            }
-        } catch (error: any) {
-            // not remembered
-        }
-
-        if (!request.hasBody()) {
-            return response.badRequest({
-                code: 400,
-                message: "Missing request body"
-            });
-        }
-
-
-        try {
-            const account = await auth.use("web").attempt(body.username, body.password, body.remember ?? false);
-
-            Logger.trace("account logged in", { id: account.id, username: account.username });
-
-            return {
-                code: 200,
-                message: "Login successful",
-                data: {
-                    account: account.serialize(),
-                }
-            };
-        } catch (error: any) {
-            console.dir(error, { depth: 4 });
-
-            return response.badRequest({
-                code: 400,
-                message: "Invalid credentials"
-            });
-        }*/
     }
     
     public async logout({ authorization }: HttpContextContract) {
