@@ -36,7 +36,7 @@ export default class NewsController {
                     }).slice(0, validatedPayload.limit || 10),
                     years: WikiGitService.posts.map((post) => post.posted_at.getFullYear()).filter((year, index, self) => self.indexOf(year) === index)
                 }
-            }
+            };
 
         } catch (e: any) {
             throw new Exception(e.message, e.status);
@@ -66,7 +66,7 @@ export default class NewsController {
                     previous: previousPost,
                     next: nextPost
                 }
-            }
+            };
 
         } catch (e: any) {
             throw new Exception(e.message, e.status);

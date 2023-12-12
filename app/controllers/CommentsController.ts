@@ -1,4 +1,4 @@
-import { AuthContract } from "@ioc:Adonis/Addons/Auth";
+import { AuthorizationContract } from "App/contracts/AuthorizationContract";
 import { HttpContextContract } from "@ioc:Adonis/Core/HttpContext";
 import Comment from "../models/Comment";
 import { Exception } from "@adonisjs/core/build/standalone";
@@ -6,19 +6,19 @@ import { Permissions } from "../util/Constants";
 import { DateTime } from "luxon";
 
 export default class CommentsController {
-    public async delete({ request, auth }: HttpContextContract) {
+    public async delete({ request, authorization }: HttpContextContract) {
 
     }
 
-    public static async deleteComment(comment: Comment, auth: AuthContract) {
-        if (!auth.user?.has(Permissions.MODERATE_COMMENTS) || comment.authorId !== auth.user.id) {
+    public static async deleteComment(comment: Comment, authorization: AuthorizationContract) {
+        if (!authorization.account?.has(Permissions.MODERATE_COMMENTS) || comment.authorId !== authorization.account.id) {
             throw new Exception("You do not have permission to delete this comment.", 403, "E_NO_PERMISSION");
         }
 
         comment.deletedAt = DateTime.now();
 
         if (comment.authorId === comment.editorId) {
-            comment.editorId = auth.user.id;
+            comment.editorId = authorization.account.id;
         }
 
         await comment.save();
@@ -28,11 +28,11 @@ export default class CommentsController {
             data: {
                 comment: comment.serialize()
             }
-        }
+        };
     }
 
-    public static async modifyComment(comment: Comment, auth: AuthContract, message: string) {
-        if (!auth.user?.has(Permissions.MODERATE_COMMENTS) || comment.authorId !== auth.user.id) {
+    public static async modifyComment(comment: Comment, authorization: AuthorizationContract, message: string) {
+        if (!authorization.account?.has(Permissions.MODERATE_COMMENTS) || comment.authorId !== authorization.account.id) {
             throw new Exception("You do not have permission to modify this comment.", 403, "E_NO_PERMISSION");
         }
     
@@ -40,7 +40,7 @@ export default class CommentsController {
         comment.updatedAt = DateTime.now();
 
         if (comment.authorId === comment.editorId) {
-            comment.editorId = auth.user.id;
+            comment.editorId = authorization.account.id;
         }
 
         await comment.save();
@@ -51,6 +51,6 @@ export default class CommentsController {
             data: {
                 comment: comment.serialize()
             }
-        }
+        };
     }
 }

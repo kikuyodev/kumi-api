@@ -33,7 +33,7 @@ export default class ChartSetsController {
         };
     }
 
-    public async modify({ request, auth }: HttpContextContract) {
+    public async modify({ request, authorization }: HttpContextContract) {
         const { id } = request.params();
         const chartSet = await ChartSet.findBy("id", id);
 
@@ -45,7 +45,7 @@ export default class ChartSetsController {
         // that this endpoint is only accessible to users who have it
         // it's only destructive because it relies on changing the
         // files automatically too
-        if (!auth.user?.has(Permissions.MANAGE_CHART_METADATA)) {
+        if (!authorization.account?.has(Permissions.MANAGE_CHART_METADATA)) {
             throw new Exception("You do not have permission to modify this set.", 403, "E_NO_PERMISSION");
         }
 
@@ -61,13 +61,13 @@ export default class ChartSetsController {
 
         if (payload.status) {
             if (payload.status == ChartStatus.Qualified || payload.status == ChartStatus.Ranked) {
-                if (!auth.user?.has(Permissions.MANAGE_CHARTS)) {
+                if (!authorization.account?.has(Permissions.MANAGE_CHARTS)) {
                     throw new Exception("You do not have permission to use these statuses.", 403, "E_NO_PERMISSION");
                 }
             }
 
             if (chartSet.status == ChartStatus.Qualified || chartSet.status == ChartStatus.Ranked) {
-                if (!auth.user?.has(Permissions.MANAGE_CHARTS)) {
+                if (!authorization.account?.has(Permissions.MANAGE_CHARTS)) {
                     throw new Exception("You do not have permission to modify this set.", 403, "E_NO_PERMISSION");
                 }
             }
@@ -88,11 +88,11 @@ export default class ChartSetsController {
         };
     }
 
-    public async nominate({ request, auth }: HttpContextContract) {
+    public async nominate({ request, authorization }: HttpContextContract) {
         const { id } = request.params();
         const chartSet = await ChartSet.findBy("id", id);
 
-        if (!auth.user?.has(Permissions.NOMINATE_CHARTS)) {
+        if (!authorization.account?.has(Permissions.NOMINATE_CHARTS)) {
             throw new NoPermissionException("NOMINATE_CHARTS");
         }
 
@@ -104,12 +104,12 @@ export default class ChartSetsController {
             throw new Exception("This set is not in pending status.", 400, "E_SET_NOT_PENDING");
         }
 
-        if (chartSet.nominators.find((n) => n.id === auth.user?.id)) {
+        if (chartSet.nominators.find((n) => n.id === authorization.account?.id)) {
             console.log(chartSet.nominators);
             throw new Exception("You have already nominated this set.", 400, "E_ALREADY_NOMINATED");
         }
 
-        chartSet.related("nominators").attach([auth.user.id]);
+        chartSet.related("nominators").attach([authorization.account.id]);
         
         if (chartSet!.nominators.length + 1 >= chartSet!.attributes.nominators_required) {
             // the set has enough nominators, so we can add it to the queue
@@ -136,7 +136,7 @@ export default class ChartSetsController {
 
         chartSet.save();
         await chartSet.refresh();
-        await ChartModdingEvent.sendNominationEvent(chartSet, auth.user);
+        await ChartModdingEvent.sendNominationEvent(chartSet, authorization.account);
 
         return {
             code: 200,  
@@ -178,7 +178,7 @@ export default class ChartSetsController {
 
             // get the two sides of the filter
             const sides = x.split(y![0]);
-            console.log(sides)
+            console.log(sides);
 
             // remove any equals signs
             sides[0] = sides[0].replace("=", "");
@@ -192,7 +192,7 @@ export default class ChartSetsController {
             limit: validatedPayload.limit ?? 50,
             filter: filters.join(" AND "),
             page: validatedPayload.page ?? 1,
-        })
+        });
     
         const results = await setIndex.search(query.join(" "), {
             limit: validatedPayload.limit ?? 50,
@@ -216,7 +216,7 @@ export default class ChartSetsController {
         };
     }
 
-    public async fetchComments({ request, auth }: HttpContextContract) {
+    public async fetchComments({ request, authorization }: HttpContextContract) {
         const { id } = request.params();
         const chartSet = await ChartSet.findBy("id", id);
 
@@ -226,13 +226,13 @@ export default class ChartSetsController {
 
         const query = Comment.query()
             .where("source_id", chartSet.id)
-            .where("source_type", CommentSourceType.ChartSet)
+            .where("source_type", CommentSourceType.ChartSet);
 
-        if (!auth.user?.has(Permissions.MODERATE_COMMENTS)) {
+        if (!authorization.account?.has(Permissions.MODERATE_COMMENTS)) {
             query.whereNull("deleted_at");
         }
 
-        const comments = await query
+        const comments = await query;
 
         return {
             code: 200,
@@ -240,24 +240,24 @@ export default class ChartSetsController {
                 comments: comments.filter((c) => c.parentId === null).map((c) => c.serialize())
             },
             meta: {
-                can_pin: auth.user?.has(Permissions.MODERATE_COMMENTS) || chartSet.creator.id === auth.user?.id,
+                can_pin: authorization.account?.has(Permissions.MODERATE_COMMENTS) || chartSet.creator.id === authorization.account?.id,
                 comments: {
                     ...comments.reduce((acc, c) => {
                         return {
                             ...acc,
                             [c.id]: {
-                                can_reply: auth.user !== undefined && !c.deleted,
-                                can_edit: auth.user?.has(Permissions.MODERATE_COMMENTS) || c.authorId === auth.user?.id,
-                                can_delete: auth.user?.has(Permissions.MODERATE_COMMENTS) || c.authorId === auth.user?.id,
+                                can_reply: authorization.account !== undefined && !c.deleted,
+                                can_edit: authorization.account?.has(Permissions.MODERATE_COMMENTS) || c.authorId === authorization.account?.id,
+                                can_delete: authorization.account?.has(Permissions.MODERATE_COMMENTS) || c.authorId === authorization.account?.id,
                             }
-                        }
+                        };
                     }, {})
                 }
             }
         };
     }
 
-    public async postComment({ request, auth }: HttpContextContract) {
+    public async postComment({ request, authorization }: HttpContextContract) {
         const { id } = request.params();
         const chartSet = await ChartSet.findBy("id", id);
 
@@ -276,17 +276,17 @@ export default class ChartSetsController {
                 ]),
                 pinned: schema.boolean.optional()
             })
-        })
+        });
 
         const finalPayload: any = {
             sourceId: chartSet.id,
             sourceType: CommentSourceType.ChartSet,
-            authorId: auth.user!.id,
+            authorId: authorization.account!.id,
             message: payload.message,
         };
 
         if (payload.pinned) {
-            if (!auth.user?.has(Permissions.MODERATE_COMMENTS) || chartSet.creator.id !== auth.user.id) {
+            if (!authorization.account?.has(Permissions.MODERATE_COMMENTS) || chartSet.creator.id !== authorization.account.id) {
                 throw new Exception("You do not have permission to pin this comment.", 403, "E_NO_PERMISSION");
             }
 
@@ -317,7 +317,7 @@ export default class ChartSetsController {
         };
     }
 
-    public async pinComment({ request, auth }: HttpContextContract) {
+    public async pinComment({ request, authorization }: HttpContextContract) {
         const { id, commentId } = request.params();
         const chartSet = await ChartSet.findBy("id", id);
         const comment = await Comment.findBy("id", commentId);
@@ -330,7 +330,7 @@ export default class ChartSetsController {
             throw new Exception("This comment does not exist.", 404, "E_COMMENT_NOT_FOUND");
         }
 
-        if (!auth.user?.has(Permissions.MODERATE_COMMENTS) && chartSet.creator.id !== auth.user?.id) {
+        if (!authorization.account?.has(Permissions.MODERATE_COMMENTS) && chartSet.creator.id !== authorization.account?.id) {
             throw new Exception("You do not have permission to pin this comment.", 403, "E_NO_PERMISSION");
         }
 
@@ -345,7 +345,7 @@ export default class ChartSetsController {
         };
     }
 
-    public async modifyComment({ request, auth }: HttpContextContract) {
+    public async modifyComment({ request, authorization }: HttpContextContract) {
         const { id, commentId } = request.params();
         const chartSet = await ChartSet.findBy("id", id);
         const comment = await Comment.findBy("id", commentId);
@@ -366,12 +366,12 @@ export default class ChartSetsController {
             schema: schema.create({
                 message: schema.string(),
             })
-        })
+        });
 
-        return await CommentsController.modifyComment(comment, auth, payload.message);
+        return await CommentsController.modifyComment(comment, authorization, payload.message);
     }
 
-    public async deleteComment({ request, auth }: HttpContextContract) {
+    public async deleteComment({ request, authorization }: HttpContextContract) {
         const { id, commentId } = request.params();
         const chartSet = await ChartSet.findBy("id", id);
         const comment = await Comment.findBy("id", commentId);
@@ -388,7 +388,7 @@ export default class ChartSetsController {
             throw new Exception("This comment does not belong to this set.", 400, "E_INVALID_COMMENT");
         }
 
-        return await CommentsController.deleteComment(comment, auth);
+        return await CommentsController.deleteComment(comment, authorization);
     }
         
 }

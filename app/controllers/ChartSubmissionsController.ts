@@ -16,7 +16,7 @@ export default class ChartSubmissionsController {
     public static CHART_VERSION = 0;
 
     public async submit(ctx: HttpContextContract) {
-        const { request, auth } = ctx;
+        const { request, authorization } = ctx;
         const charts = await this.validateAndParseChartSet(ctx);
 
         const basis = charts[0];
@@ -38,7 +38,7 @@ export default class ChartSubmissionsController {
         });
 
         const chartsToCreate = await ChartParser.createCreatableCharts(charts, basis);
-        const user = auth.use("web").user;
+        const user = authorization.account;
 
         if (basis.chart.chartSetId !== -1) {
             const existingSet = await ChartSet.findBy("id", basis.chart.chartSetId);
@@ -138,7 +138,7 @@ export default class ChartSubmissionsController {
     }
 
     public async update(ctx: HttpContextContract) {
-        const { request, auth } = ctx;
+        const { request, authorization } = ctx;
         const charts = await this.validateAndParseChartSet(ctx);
         const basis = charts[0];
 
@@ -156,7 +156,7 @@ export default class ChartSubmissionsController {
             throw new Exception("The chart set you are trying to update does not exist.", 400, "E_SET_NOT_FOUND");
         }
 
-        if (existingSet.creatorId !== auth.use("web").user!.id) {
+        if (existingSet.creatorId !== authorization.account.id) {
             throw new Exception("You cannot update a chart set that you did not create.", 403, "E_SET_NOT_OWNED");
         }
 
@@ -266,7 +266,7 @@ export default class ChartSubmissionsController {
         }
 
         const chartsToCreate = await ChartParser.createCreatableCharts(charts, basis);
-        const user = auth.use("web").user;
+        const user = authorization.account;
 
         // create the new chart if needed
         const newDatabaseCharts = await Chart.createMany(newCharts.map(c => {

@@ -2,7 +2,7 @@ import Account from "App/models/Account";
 import ChatChannel from "App/models/ChatChannel";
 import ChatMessage from "App/models/ChatMessage";
 import WebsocketService from "App/services/WebsocketService";
-import { SocketEvent, OpCode } from "App/structures/SocketEvent";
+import { OpCode, SocketEvent } from "App/structures/SocketEvent";
 
 export class Channel {
     public channel: ChatChannel;

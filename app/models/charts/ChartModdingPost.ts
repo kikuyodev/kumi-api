@@ -191,13 +191,13 @@ export default class ChartModdingPost extends BaseModel {
         await post.load((loader) => {
             loader
                 .load("children")
-                .load("set")
+                .load("set");
 
             if (post.authorId)
                 loader.load("author");
 
             if (post.parentId)
-                loader.load("parent")
+                loader.load("parent");
 
             if (post.chartId)
                 loader.load("chart");
@@ -207,7 +207,7 @@ export default class ChartModdingPost extends BaseModel {
 
             if (post.doneById)
                 loader.load("doneBy");
-        })
+        });
 
     }
 

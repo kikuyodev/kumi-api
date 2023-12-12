@@ -15,7 +15,7 @@ export default class ChartsController {
             data: {
                 chart: chart.serialize()
             }
-        }
+        };
     }
 
     public async fetchScores({ request }: HttpContextContract) {
@@ -30,6 +30,6 @@ export default class ChartsController {
             data: {
                 scores: [] // scores don't exist yet
             }
-        }
+        };
     }
 }

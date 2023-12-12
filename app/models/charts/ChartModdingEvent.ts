@@ -129,11 +129,11 @@ export default class ChartModdingEvent extends BaseModel {
             console.log(event.playerId);
             event.load((loader) => {
                 if (event.playerId)
-                    loader.load("player")
+                    loader.load("player");
 
                 if (event.parentId)
-                    loader.load("parent")
-            })
+                    loader.load("parent");
+            });
         });
     }
 }

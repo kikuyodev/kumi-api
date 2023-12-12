@@ -69,7 +69,7 @@ Route.group(() => {
 			Route.group(() => {
 				Route.post("/submit", "ChartSubmissionsController.submit");
 				Route.post("/update", "ChartSubmissionsController.update");
-			}) 
+			}); 
 
 			// /api/v1/chartset/:id/moddings
 			Route.group(() => {
@@ -131,6 +131,7 @@ Route.group(() => {
 
 		Route.get("/notifications", "NotificationsController.fetch").middleware("auth:web,api");
 		Route.get("/meta/stats", "MetaController.stats");
+		Route.get("/meta/health", "MetaController.health");
 	}).prefix("/v1");
 }).prefix("/api").middleware("silent:web,api");
 
