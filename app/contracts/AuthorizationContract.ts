@@ -99,6 +99,23 @@ export class AuthorizationContract {
         return false;
     }
 
+    public async logout() {
+        const token = this.ctx.request.plainCookie("KUMI-SESSION");
+
+        if (!token)
+            return false;
+
+        const session = await Session.findBy("token", token);
+
+        if (!session)
+            return false;
+
+        await session.delete();
+
+        this.authorized = false;
+        return true;
+    }
+
     public async login(query: string, password: string) {
         const account = await Account
             .query()

@@ -368,7 +368,7 @@ export default class AccountsController {
     public async logout({ authorization }: HttpContextContract) {
         const account = authorization.account!;
 
-        //await auth.use("web").logout();
+        await authorization.logout();
 
         Logger.trace("account logged out", { id: account.id, username: account.username });
 
