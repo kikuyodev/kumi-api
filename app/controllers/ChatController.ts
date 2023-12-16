@@ -2,7 +2,8 @@ import { Exception } from "@adonisjs/core/build/standalone";
 import { HttpContextContract } from "@ioc:Adonis/Core/HttpContext";
 import ChatChannel, { ChatChannelType } from "App/models/ChatChannel";
 import WebsocketService from "App/services/WebsocketService";
-import { OpCode, SocketEvent } from "App/structures/SocketEvent";
+import { OpCode, SocketEvent } from "App/structures/SocketEvent";import Redis from "@ioc:Adonis/Addons/Redis";
+import { HttpContextContract } from "@ioc:Adonis/Core/HttpContextZAMN
 
 export default class ChatController {
     public async join({ request, auth }: HttpContextContract) {
@@ -22,7 +23,6 @@ export default class ChatController {
                 throw new Exception("You are not allowed to join this channel", 403, "E_NOT_ALLOWED");
         }
 
-        WebsocketService.channel(channelModel!.id)?.join(auth.user!);
 
         return {
             code: 200,
