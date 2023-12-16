@@ -7,19 +7,19 @@ import { Exception } from "@adonisjs/core/build/standalone";
 import Account from "../models/Account";
 
 export default class ForumsController {
-    public async index({ auth }: HttpContextContract) {
+    public async index({ authorization }: HttpContextContract) {
         const forums = await Forum.query().orderBy("order", "asc").whereNull("parentId");
 
         return {
             code: 200,
             data: {
-                forums: (await Promise.all(forums.map(async (forum) => await ForumsController.trueSerialize(forum, auth.user)))).filter((forum) => forum !== undefined)
+                forums: (await Promise.all(forums.map(async (forum) => await ForumsController.trueSerialize(forum, authorization.account)))).filter((forum) => forum !== undefined)
             }
-        }
+        };
     }
 
-    public async fetch({ request, auth }: HttpContextContract) {
-        let forum = await Forum.findBy("id", request.param("id"));
+    public async fetch({ request, authorization }: HttpContextContract) {
+        const forum = await Forum.findBy("id", request.param("id"));
 
         if (!forum || forum.isCategory) {
             throw new Exception("Forum not found", 404, "E_FORUM_NOT_FOUND");
@@ -27,19 +27,19 @@ export default class ForumsController {
 
         console.log("fetch");
 
-        if (!await forum.can("view", auth.user)) {
+        if (!await forum.can("view", authorization.account)) {
             throw new Exception("You do not have permission to view this forum", 403, "E_NO_PERMISSION");
         }
 
         return {
             code: 200,
             data: {
-                forum: await ForumsController.trueSerialize(forum, auth.user)
+                forum: await ForumsController.trueSerialize(forum, authorization.account)
             }
         };
     }
 
-    public async create({ request, auth }: HttpContextContract) {
+    public async create({ request, authorization }: HttpContextContract) {
         const payload = await request.validate({
             schema: schema.create({
                 name: schema.string(),
@@ -60,7 +60,7 @@ export default class ForumsController {
             } 
         });
 
-        if (!auth.user?.has(Permissions.MANAGE_FORUMS)) {
+        if (!authorization.account?.has(Permissions.MANAGE_FORUMS)) {
             throw new NoPermissionException("MANAGE_FORUMS");
         }
 
@@ -68,7 +68,7 @@ export default class ForumsController {
             name: payload.name,
             description: payload.description,
             order: payload.order,
-        }
+        };
 
         if (payload.private) {
             finalPayload.private = payload.private;

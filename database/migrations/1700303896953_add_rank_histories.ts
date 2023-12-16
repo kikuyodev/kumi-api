@@ -1,7 +1,7 @@
-import BaseSchema from "@ioc:Adonis/Lucid/Schema"
+import BaseSchema from "@ioc:Adonis/Lucid/Schema";
 
 export default class extends BaseSchema {
-  protected tableName = "rank_history"
+  protected tableName = "rank_history";
 
   public async up () {
     this.schema.createTable(this.tableName, (table) => {
@@ -11,11 +11,11 @@ export default class extends BaseSchema {
       /**
        * Uses timestamptz for PostgreSQL and DATETIME2 for MSSQL
        */
-      table.timestamp("timestamp", { useTz: true })
-    })
+      table.timestamp("timestamp", { useTz: true });
+    });
   }
 
   public async down () {
-    this.schema.dropTable(this.tableName)
+    this.schema.dropTable(this.tableName);
   }
 }

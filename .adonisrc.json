@@ -29,9 +29,8 @@
     "./providers/AppProvider",
     "@adonisjs/core",
     "@adonisjs/lucid",
-    "@adonisjs/auth",
-    "@adonisjs/session",
-    "adonis5-scheduler"
+    "adonis5-scheduler",
+    "@adonisjs/redis"
   ],
   "aceProviders": [
     "@adonisjs/repl"

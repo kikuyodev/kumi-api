@@ -33,14 +33,14 @@ class WebhookService {
 
     public sendGroupMessage(group: Group, account: Account, added: boolean, reason?: string) {
         let color = parseInt(group.color.slice(1), 16);
-        let message = `was **added** to`;
+        let message = "was **added** to";
         let title = "Added to Group";
         let emote = "\🎵";
         
         if (added === false) {
             // lower the lightness
             color -= 0x111111;
-            message = `was **removed** from`;
+            message = "was **removed** from";
             emote = "\🙁";
             title = "Removed from Group";
         }

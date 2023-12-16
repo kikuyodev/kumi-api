@@ -11,7 +11,7 @@ export enum ForumFlags {
     Protected = 1 << 1,
     Locked = 1 << 2,
     Archived = 1 << 3,
-}
+}   
 
 type CanUnion
     = "view"
@@ -168,7 +168,7 @@ export default class Forum extends BaseModel {
             await category.load((loader) => {
                 loader.load("children");
                 loader.load("lastThread");
-            })
+            });
         }
     }
 
@@ -186,6 +186,6 @@ export default class Forum extends BaseModel {
 
         });
 
-        console.log(category.parent)
+        console.log(category.parent);
     }
 }

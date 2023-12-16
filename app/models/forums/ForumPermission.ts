@@ -32,6 +32,6 @@ export default class ForumPermission extends BaseModel {
     public permissions: number;
 
     public has(permission: ForumPermissions) {
-        return (this.permissions & permission) === permission
+        return (this.permissions & permission) === permission;
     }
 }

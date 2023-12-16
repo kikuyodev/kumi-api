@@ -10,12 +10,12 @@ export default class SilentAuthMiddleware {
   /**
    * Handle request
    */
-  public async handle({ auth }: HttpContextContract, next: () => Promise<void>) {
+  public async handle({ authorization }: HttpContextContract, next: () => Promise<void>) {
     /**
-     * Check if user is logged-in or not. If yes, then `ctx.auth.user` will be
+     * Check if user is logged-in or not. If yes, then `ctx.authorization.account` will be
      * set to the instance of the currently logged in user.
      */
-    await auth.check();
+    await authorization.verify();
     await next();
   }
 }

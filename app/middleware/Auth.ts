@@ -1,5 +1,3 @@
-import { AuthenticationException } from "@adonisjs/auth/build/standalone";
-import type { GuardsList } from "@ioc:Adonis/Addons/Auth";
 import type { HttpContextContract } from "@ioc:Adonis/Core/HttpContext";
 
 /**
@@ -10,67 +8,42 @@ import type { HttpContextContract } from "@ioc:Adonis/Core/HttpContext";
  * of named middleware.
  */
 export default class AuthMiddleware {
-  /**
-   * The URL to redirect to when request is Unauthorized
-   */
-  protected redirectTo = "/login";
-
-  /**
-   * Authenticates the current HTTP request against a custom set of defined
-   * guards.
-   *
-   * The authentication loop stops as soon as the user is authenticated using any
-   * of the mentioned guards and that guard will be used by the rest of the code
-   * during the current request.
-   */
-  protected async authenticate(auth: HttpContextContract["auth"], guards: (keyof GuardsList)[]) {
+    public bool sent = false;
     /**
-     * Hold reference to the guard last attempted within the for loop. We pass
-     * the reference of the guard to the "AuthenticationException", so that
-     * it can decide the correct response behavior based upon the guard
-     * driver
+     * Authenticates the current HTTP request against a custom set of defined
+     * guards.
+     *
+     * The authentication loop stops as soon as the user is authenticated using any
+     * of the mentioned guards and that guard will be used by the rest of the code
+     * during the current request.
      */
-    let guardLastAttempted: string | undefined;
+    protected async authenticate(ctx: HttpContextContract) {
+        const authorization = ctx.authorization;
 
-    for (const guard of guards) {
-      guardLastAttempted = guard;
+        if (!await authorization.verify()) {
+            ctx.response.unauthorized({
+                code: 401,
+                message: "You are unauthorized to access this resource."
+            });
+            
+            return true;
+        }
 
-      if (await auth.use(guard).check()) {
-        /**
-         * Instruct auth to use the given guard as the default guard for
-         * the rest of the request, since the user authenticated
-         * succeeded here
-         */
-        auth.defaultGuard = guard;
-        return true;
-      }
+        return null;
     }
 
     /**
-     * Unable to authenticate using any guard
+     * Handle request
      */
-    throw new AuthenticationException(
-      "Unauthorized access",
-      "E_UNAUTHORIZED_ACCESS",
-      guardLastAttempted,
-      this.redirectTo,
-    );
-  }
+    public async handle(
+        ctx: HttpContextContract,
+        next: () => Promise<void>
+    ) {
+        let res: any = null;
+        if (res = await this.authenticate(ctx)) {
+            return res;
+        }
 
-  /**
-   * Handle request
-   */
-  public async handle (
-    { auth }: HttpContextContract,
-    next: () => Promise<void>,
-    customGuards: (keyof GuardsList)[]
-  ) {
-    /**
-     * Uses the user defined guards or the default guard mentioned in
-     * the config file
-     */
-    const guards = customGuards.length ? customGuards : [auth.name];
-    await this.authenticate(auth, guards);
-    await next();
-  }
+        await next();
+    }
 }

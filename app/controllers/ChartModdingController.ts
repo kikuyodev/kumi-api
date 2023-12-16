@@ -1,6 +1,6 @@
 import { Exception } from "@adonisjs/core/build/standalone";
 import { HttpContextContract } from "@ioc:Adonis/Core/HttpContext";
-import { schema, rules } from "@ioc:Adonis/Core/Validator";
+import { rules, schema } from "@ioc:Adonis/Core/Validator";
 import Chart, { ChartStatus } from "App/models/charts/Chart";
 import ChartModdingPost, { ChartModdingPostStatus, ChartModdingPostType } from "App/models/charts/ChartModdingPost";
 import ChartSet from "App/models/charts/ChartSet";
@@ -10,14 +10,14 @@ import { DateTime } from "luxon";
 import { ChartProcessor } from "../structures/charts/ChartProcessor";
 
 export default class ChartModdingsController {
-    public async fetchAll({ request, auth }: HttpContextContract) {
+    public async fetchAll({ request, authorization }: HttpContextContract) {
         const { id } = request.params();
         const chartSet = await ChartSet.findBy("id", id);
 
         if (!chartSet)
             throw new Exception("This set does not exist.", 404, "E_SET_NOT_FOUND");
 
-        const posts = await ChartModdingPost.query().where("set_id", chartSet.id)
+        const posts = await ChartModdingPost.query().where("set_id", chartSet.id);
         const events = await ChartModdingEvent.query().where("set_id", chartSet.id);
 
         return {
@@ -31,31 +31,31 @@ export default class ChartModdingsController {
                     (chartSet.status < ChartStatus.Qualified
                         && chartSet.status !== ChartStatus.WorkInProgress
                         && chartSet.nominators.length < chartSet.attributes.nominators_required
-                        && auth.user?.has(Permissions.NOMINATE_CHARTS)) ?? false,
-                can_moderate_posts: auth.user?.has(Permissions.MODERATE_CHARTS) ?? false,
+                        && authorization.account?.has(Permissions.NOMINATE_CHARTS)) ?? false,
+                can_moderate_posts: authorization.account?.has(Permissions.MODERATE_CHARTS) ?? false,
                 posts: {
                     ...posts.reduce((acc, post) => {
                         return {
                             ...acc,
                             [post.id]: {
-                                can_reply: post.type !== ChartModdingPostType.System && post.status !== ChartModdingPostStatus.Resolved && auth.user !== undefined,
+                                can_reply: post.type !== ChartModdingPostType.System && post.status !== ChartModdingPostStatus.Resolved && authorization.account !== undefined,
                                 can_resolve: post.status === ChartModdingPostStatus.Open && (
-                                    auth.user?.has(Permissions.MODERATE_CHARTS)
-                                    || (post.chart?.creators.find((c) => c.id === auth.user?.id))
-                                    || chartSet.creator.id === auth.user?.id
-                                    || post.author.id === auth.user?.id
-                                ) && auth.user !== undefined,
-                                can_reopen: post.status === ChartModdingPostStatus.Resolved && auth.user !== undefined,
-                                can_edit: post.type !== ChartModdingPostType.System && (post.author.id === auth.user?.id || auth.user?.has(Permissions.MODERATE_CHARTS)) && auth.user !== undefined,
+                                    authorization.account?.has(Permissions.MODERATE_CHARTS)
+                                    || (post.chart?.creators.find((c) => c.id === authorization.account?.id))
+                                    || chartSet.creator.id === authorization.account?.id
+                                    || post.author.id === authorization.account?.id
+                                ) && authorization.account !== undefined,
+                                can_reopen: post.status === ChartModdingPostStatus.Resolved && authorization.account !== undefined,
+                                can_edit: post.type !== ChartModdingPostType.System && (post.author.id === authorization.account?.id || authorization.account?.has(Permissions.MODERATE_CHARTS)) && authorization.account !== undefined,
                             }
-                        }
+                        };
                     }, {})
                 }
             }
-        }
+        };
     }
 
-    public async post({ request, auth }: HttpContextContract) {
+    public async post({ request, authorization }: HttpContextContract) {
         const { id } = request.params();
         const payload = await request.validate({
             schema: schema.create({
@@ -99,7 +99,7 @@ export default class ChartModdingsController {
         const finalPayload: Record<string, any> = {
             type: type,
             chartSetId: chartSet!.id,
-            authorId: auth.user!.id,
+            authorId: authorization.account!.id,
             message: payload.message,
             status: (type === ChartModdingPostType.Problem || type === ChartModdingPostType.Suggestion)
                 ? ChartModdingPostStatus.Open
@@ -156,12 +156,12 @@ export default class ChartModdingsController {
 
                         // only let creators resolve posts
                         // moderators can resolve posts on any chart
-                        if (auth.user?.has(Permissions.MODERATE_CHARTS)) {
+                        if (authorization.account?.has(Permissions.MODERATE_CHARTS)) {
                             parent.status = ChartModdingPostStatus.Resolved;
                             parent.save();
                         } else if (payload.chart) {
                             // check if the user is the creator of the chart
-                            if (chart!.creators.find((c) => c.id === auth.user!.id)) {
+                            if (chart!.creators.find((c) => c.id === authorization.account!.id)) {
                                 parent.status = ChartModdingPostStatus.Resolved;
                                 parent.save();
                             } else {
@@ -169,7 +169,7 @@ export default class ChartModdingsController {
                             }
                         } else {
                             // only let the creator of the set resolve posts
-                            if (chartSet!.creator.id === auth.user!.id) {
+                            if (chartSet!.creator.id === authorization.account!.id) {
                                 parent.status = ChartModdingPostStatus.Resolved;
                                 parent.save();
                             } else {
@@ -182,7 +182,7 @@ export default class ChartModdingsController {
                             parentId: parent.id,
                             chartId: chart?.id,
                             chartSetId: chartSet!.id,
-                            doneById: auth.user!.id,
+                            doneById: authorization.account!.id,
                             message: "",
                             attributes: {
                                 resolved: payload.attributes.resolved
@@ -206,7 +206,7 @@ export default class ChartModdingsController {
                             parentId: parent.id,
                             chartId: chart?.id,
                             chartSetId: chartSet!.id,
-                            doneById: auth.user!.id,
+                            doneById: authorization.account!.id,
                             message: "",
                             attributes: {
                                 reopened: payload.attributes.reopened
@@ -218,7 +218,7 @@ export default class ChartModdingsController {
 
                 if (payload.attributes.muted !== undefined) {
                     // only moderators can mute posts
-                    if (!auth.user?.has(Permissions.MODERATE_CHARTS))
+                    if (!authorization.account?.has(Permissions.MODERATE_CHARTS))
                         throw new Exception("You do not have permission to mute posts.", 403, "E_NO_PERMISSION");
 
                     // todo: mute the post
@@ -242,9 +242,9 @@ export default class ChartModdingsController {
         }
 
         if (finalPayload.type === ChartModdingPostType.Problem) {
-            if (auth.user?.has(Permissions.DISQUALIFY_CHARTS)) {
+            if (authorization.account?.has(Permissions.DISQUALIFY_CHARTS)) {
                 // reset the nomination status of the chart
-                await ChartModdingEvent.sendDisqualificationEvent(chartSet, auth.user!);
+                await ChartModdingEvent.sendDisqualificationEvent(chartSet, authorization.account!);
                 
                 for (const nominator of chartSet.nominators) {
                     chartSet.related("nominators").detach([nominator.id]);
@@ -280,10 +280,10 @@ export default class ChartModdingsController {
             data: {
                 post: post.serialize()
             }
-        }
+        };
     }
 
-    public async modify({ request, auth }: HttpContextContract) {
+    public async modify({ request, authorization }: HttpContextContract) {
         const { postId } = request.params();
         const payload = await request.validate({
             schema: schema.create({
@@ -299,14 +299,14 @@ export default class ChartModdingsController {
         if (post.type === ChartModdingPostType.System)
             throw new Exception("You cannot edit a system post.", 400, "E_INVALID_POST");
 
-        if (post.author.id !== auth.user?.id && !auth.user?.has(Permissions.MODERATE_CHARTS))
+        if (post.author.id !== authorization.account?.id && !authorization.account?.has(Permissions.MODERATE_CHARTS))
             throw new Exception("You do not have permission to edit this post.", 403, "E_NO_PERMISSION");
 
         post.message = payload.message;
 
         // set the editor if the user is not a moderator
-        if (post.author.id == auth.user?.id) {
-            post.editorId = auth.user!.id;
+        if (post.author.id == authorization.account?.id) {
+            post.editorId = authorization.account!.id;
         } else {
             post.editorId = null;
         }
@@ -321,6 +321,6 @@ export default class ChartModdingsController {
             data: {
                 post: post.serialize()
             }
-        }
+        };
     }
 }

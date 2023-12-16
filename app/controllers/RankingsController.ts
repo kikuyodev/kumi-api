@@ -3,7 +3,7 @@ import { rules, schema } from "@ioc:Adonis/Core/Validator";
 import Account from "../models/Account";
 
 export default class RankingsController {
-    public async fetch({ request }: HttpContextContract) {
+    public async fetch({ request, }: HttpContextContract) {
         const { id } = request.params();
         const payload = await request.validate({
             schema: schema.create({
@@ -17,7 +17,7 @@ export default class RankingsController {
         });
 
         const accountQuery = Account.query()
-            .orderBy(payload.type == "ranked" ? "ranked_score" : "total_score", "desc")
+            .orderBy(payload.type == "ranked" ? "ranked_score" : "total_score", "desc");
 
         if (payload.country)
             accountQuery.where("country_code", payload.country.toUpperCase());

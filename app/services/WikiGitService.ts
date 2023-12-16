@@ -55,7 +55,7 @@ class WikiGitService {
                 split.shift();
                 const locale = split.pop().replace(".md", "");
                 const safePath = split.join("/");
-                const safeTitle = split[split.length - 1].replace("_", " ")
+                const safeTitle = split[split.length - 1].replace("_", " ");
 
                 const content = await this.kit.repos.getContent({
                     owner: "kikuyodev",
@@ -136,7 +136,7 @@ class WikiGitService {
             headline: config["headline"],
             banner: config["banner"],
             configuration: config
-        }
+        };
     }
 
     private async parseConfiguration(data: string) {

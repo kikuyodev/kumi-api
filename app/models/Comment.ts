@@ -123,14 +123,14 @@ export default class Comment extends BaseModel {
         await comment.load((loader) => {
             loader
                 .load("children")
-                .load("author")
+                .load("author");
 
             if (comment.parentId) {
                 loader.load("parent");
             }
 
             Comment.loadTypeRelations(comment, loader);
-        })
+        });
     }
 
     @afterFetch()
@@ -139,7 +139,7 @@ export default class Comment extends BaseModel {
             await comment.load((loader) => {
                 loader
                     .load("children")
-                    .load("author")
+                    .load("author");
 
                 Comment.loadTypeRelations(comment, loader);
             });

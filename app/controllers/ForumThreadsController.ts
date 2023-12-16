@@ -10,8 +10,8 @@ import Database from "@ioc:Adonis/Lucid/Database";
 import ForumsController from "./ForumsController";
 
 export default class ForumTopicsController {
-    public async index({ request, auth }: HttpContextContract) {
-        let forum = await Forum.findBy("id", request.param("id"));
+    public async index({ request, authorization }: HttpContextContract) {
+        const forum = await Forum.findBy("id", request.param("id"));
         const payload = await request.validate({
             schema: schema.create({
                 page: schema.number.optional(),
@@ -25,7 +25,7 @@ export default class ForumTopicsController {
             throw new Exception("Forum not found", 404, "E_FORUM_NOT_FOUND");
         }
 
-        if (!await forum.can("view", auth.user)) {
+        if (!await forum.can("view", authorization.account)) {
             throw new Exception("You do not have permission to view this forum", 403, "E_NO_PERMISSION");
         }
 
@@ -41,14 +41,14 @@ export default class ForumTopicsController {
                 is_read: false,
             };
 
-            if (auth.user) {
+            if (authorization.account) {
                 const lastRead = await Database.query()
                     .from("forum_threads_read")
-                    .where("user_id", auth.user.id)
+                    .where("user_id", authorization.account.id)
                     .where("thread_id", thread.id)
                     .first();
 
-                console.log(thread.last_post.created_at)
+                console.log(thread.last_post.created_at);
 
                 if (lastRead) {
                     threadMetadata[id].is_read = new Date(thread.last_post.created_at) <= lastRead.last_read_at;
@@ -68,7 +68,7 @@ export default class ForumTopicsController {
         };
     }
 
-    public async indexPosts({ request, auth }: HttpContextContract) {
+    public async indexPosts({ request, authorization }: HttpContextContract) {
         const thread = await ForumThread.findBy("id", request.param("threadId"));
 
         if (!thread) {
@@ -84,7 +84,7 @@ export default class ForumTopicsController {
             })
         });
 
-        if (!await thread.forum.can("view", auth.user)) {
+        if (!await thread.forum.can("view", authorization.account)) {
             throw new Exception("You do not have permission to view this thread", 403, "E_NO_PERMISSION");
         }
 
@@ -92,7 +92,7 @@ export default class ForumTopicsController {
             .where("threadId", thread.id)
             .orderBy("created_at", "asc");
 
-        if (!await thread.forum.can("moderate_forums", auth.user)) {
+        if (!await thread.forum.can("moderate_forums", authorization.account)) {
             // omit deleted posts
             query.whereNull("deleted_at");
         }
@@ -100,24 +100,24 @@ export default class ForumTopicsController {
         const posts = await query.paginate(payload.page ?? 1, payload.limit ?? 25);
         posts.baseUrl(`/api/v1/forums/threads/${thread.id}/posts`);
 
-        if (auth.user) {
+        if (authorization.account) {
             // mark thread as read
             const lastRead = await Database.query()
                 .from("forum_threads_read")
-                .where("user_id", auth.user.id)
+                .where("user_id", authorization.account.id)
                 .where("thread_id", thread.id)
                 .first();
 
             if (!lastRead) {
                 await Database.insertQuery().table("forum_threads_read").insert({
-                    user_id: auth.user.id,
+                    user_id: authorization.account.id,
                     thread_id: thread.id,
                     last_read_at: DateTime.now().toSQL()
                 });
             } else {
                 await Database.query()
                     .from("forum_threads_read")
-                    .where("user_id", auth.user.id)
+                    .where("user_id", authorization.account.id)
                     .where("thread_id", thread.id)
                     .update({
                         last_read_at: DateTime.now().toSQL()
@@ -137,17 +137,17 @@ export default class ForumTopicsController {
                         return {
                             ...acc,
                             [post.id]: {
-                                can_edit: post.authorId === auth.user?.id || await thread.forum.can("moderate_forums", auth.user),
-                                can_delete: post.authorId === auth.user?.id || await thread.forum.can("moderate_forums", auth.user),
+                                can_edit: post.authorId === authorization.account?.id || await thread.forum.can("moderate_forums", authorization.account),
+                                can_delete: post.authorId === authorization.account?.id || await thread.forum.can("moderate_forums", authorization.account),
                             }
-                        }
+                        };
                     }, {}))
                 }
             }
-        }
+        };
     }
 
-    public async fetch({ request, auth }: HttpContextContract) {
+    public async fetch({ request, authorization }: HttpContextContract) {
         const thread = await ForumThread.findBy("id", request.param("threadId"));
 
         if (!thread) {
@@ -156,7 +156,7 @@ export default class ForumTopicsController {
 
         await thread.load("forum");
 
-        if (!await thread.forum.can("view", auth.user)) {
+        if (!await thread.forum.can("view", authorization.account)) {
             throw new Exception("You do not have permission to view this thread", 403, "E_NO_PERMISSION");
         }
 
@@ -166,17 +166,17 @@ export default class ForumTopicsController {
                 thread
             },
             meta: {
-                can_reply: !await thread.is(ForumThreadFlags.Locked) || await thread.forum.can("post_replies", auth.user),
-                can_edit: await thread.authorId === auth.user?.id || await thread.forum.can("moderate_forums", auth.user),
-                can_delete: await thread.authorId === auth.user?.id || await thread.forum.can("moderate_forums", auth.user),
-                can_move: await thread.forum.can("moderate_forums", auth.user),
-                can_pin: await thread.forum.can("moderate_forums", auth.user),
-                can_lock: await thread.forum.can("moderate_forums", auth.user),
+                can_reply: !await thread.is(ForumThreadFlags.Locked) || await thread.forum.can("post_replies", authorization.account),
+                can_edit: await thread.authorId === authorization.account?.id || await thread.forum.can("moderate_forums", authorization.account),
+                can_delete: await thread.authorId === authorization.account?.id || await thread.forum.can("moderate_forums", authorization.account),
+                can_move: await thread.forum.can("moderate_forums", authorization.account),
+                can_pin: await thread.forum.can("moderate_forums", authorization.account),
+                can_lock: await thread.forum.can("moderate_forums", authorization.account),
             }
         };
     }
 
-    public async create({ request, auth }: HttpContextContract) {
+    public async create({ request, authorization }: HttpContextContract) {
         const payload = await request.validate({
             schema: schema.create({
                 title: schema.string(),
@@ -195,21 +195,21 @@ export default class ForumTopicsController {
             throw new Exception("Forum not found", 404, "E_FORUM_NOT_FOUND");
         }
 
-        if (!await forum.can("post_threads", auth.user)) {
+        if (!await forum.can("post_threads", authorization.account)) {
             throw new Exception("You do not have permission to post threads in this forum", 403, "E_NO_PERMISSION");
         }
 
         const thread = await ForumThread.create({
             title: payload.title,
             forumId: forum.id,
-            authorId: auth.user?.id
+            authorId: authorization.account?.id
         });
 
         // create parent post
         await ForumPost.create({
             threadId: thread.id,
             body: payload.body,
-            authorId: auth.user?.id
+            authorId: authorization.account?.id
         });
 
         await thread.refresh();
@@ -222,7 +222,7 @@ export default class ForumTopicsController {
         };
     }
 
-    public async reply({ request, auth }: HttpContextContract) {
+    public async reply({ request, authorization }: HttpContextContract) {
         const payload = await request.validate({
             schema: schema.create({
                 body: schema.string()
@@ -238,14 +238,14 @@ export default class ForumTopicsController {
             throw new Exception("Thread not found", 404, "E_THREAD_NOT_FOUND");
         }
 
-        if (!await thread.forum.can("post_replies", auth.user)) {
+        if (!await thread.forum.can("post_replies", authorization.account)) {
             throw new Exception("You do not have permission to post replies in this thread", 403, "E_NO_PERMISSION");
         }
 
         const post = await ForumPost.create({
             threadId: thread.id,
             body: payload.body,
-            authorId: auth.user?.id
+            authorId: authorization.account?.id
         });
 
         // delete all previous read markers
@@ -262,7 +262,7 @@ export default class ForumTopicsController {
         };
     }
 
-    public async modify({ request, auth }: HttpContextContract) {
+    public async modify({ request, authorization }: HttpContextContract) {
         const payload = await request.validate({
             schema: schema.create({
                 title: schema.string.optional(),
@@ -282,7 +282,7 @@ export default class ForumTopicsController {
             throw new Exception("Thread not found", 404, "E_THREAD_NOT_FOUND");
         }
 
-        if (thread.authorId !== auth.user?.id && !await thread.forum.can("moderate_forums", auth.user)) {
+        if (thread.authorId !== authorization.account?.id && !await thread.forum.can("moderate_forums", authorization.account)) {
             throw new Exception("You do not have permission to modify this thread", 403, "E_NO_PERMISSION");
         }
 
@@ -296,7 +296,7 @@ export default class ForumTopicsController {
         }
 
         if (payload.lock) {
-            if (!await thread.forum.can("moderate_forums", auth.user)) {
+            if (!await thread.forum.can("moderate_forums", authorization.account)) {
                 throw new Exception("You do not have permission to lock this thread", 403, "E_NO_PERMISSION");
             }
 
@@ -304,7 +304,7 @@ export default class ForumTopicsController {
         }
 
         if (payload.unlock) {
-            if (!await thread.forum.can("moderate_forums", auth.user)) {
+            if (!await thread.forum.can("moderate_forums", authorization.account)) {
                 throw new Exception("You do not have permission to unlock this thread", 403, "E_NO_PERMISSION");
             }
 
@@ -312,13 +312,13 @@ export default class ForumTopicsController {
         }
 
         if (payload.pin) {
-            if (!await thread.forum.can("moderate_forums", auth.user)) {
+            if (!await thread.forum.can("moderate_forums", authorization.account)) {
                 throw new Exception("You do not have permission to pin this thread", 403, "E_NO_PERMISSION");
             }
 
             thread.flags = thread.flags | ForumThreadFlags.Pinned;
         } else if (payload.pin === false) {
-            if (!await thread.forum.can("moderate_forums", auth.user)) {
+            if (!await thread.forum.can("moderate_forums", authorization.account)) {
                 throw new Exception("You do not have permission to unpin this thread", 403, "E_NO_PERMISSION");
             }
 
@@ -326,7 +326,7 @@ export default class ForumTopicsController {
         }
 
         if (payload.forum) {
-            if (!await thread.forum.can("moderate_forums", auth.user)) {
+            if (!await thread.forum.can("moderate_forums", authorization.account)) {
                 throw new Exception("You do not have permission to move this thread", 403, "E_NO_PERMISSION");
             }
 
@@ -351,7 +351,7 @@ export default class ForumTopicsController {
         };
     }
 
-    public async modifyPost({ request, auth }: HttpContextContract) {
+    public async modifyPost({ request, authorization }: HttpContextContract) {
         const payload = await request.validate({
             schema: schema.create({
                 body: schema.string.optional(),
@@ -364,7 +364,7 @@ export default class ForumTopicsController {
             throw new Exception("Post not found", 404, "E_POST_NOT_FOUND");
         }
 
-        if (post.authorId !== auth.user?.id && !await post.thread.forum.can("moderate_forums", auth.user)) {
+        if (post.authorId !== authorization.account?.id && !await post.thread.forum.can("moderate_forums", authorization.account)) {
             throw new Exception("You do not have permission to modify this post", 403, "E_NO_PERMISSION");
         }
 
@@ -373,7 +373,7 @@ export default class ForumTopicsController {
         }
 
         post.updatedAt = DateTime.now();
-        post.editorId = auth.user?.id ?? null;
+        post.editorId = authorization.account?.id ?? null;
 
         await post.save();
 
@@ -385,14 +385,14 @@ export default class ForumTopicsController {
         };
     }
 
-    public async delete({ request, auth }: HttpContextContract) {
+    public async delete({ request, authorization }: HttpContextContract) {
         const thread = await ForumThread.findBy("id", request.param("threadId"));
 
         if (!thread) {
             throw new Exception("Thread not found", 404, "E_THREAD_NOT_FOUND");
         }
 
-        if (thread.authorId !== auth.user?.id && !await thread.forum.can("moderate_forums", auth.user)) {
+        if (thread.authorId !== authorization.account?.id && !await thread.forum.can("moderate_forums", authorization.account)) {
             throw new Exception("You do not have permission to delete this thread", 403, "E_NO_PERMISSION");
         }
 
@@ -406,14 +406,14 @@ export default class ForumTopicsController {
         };
     }
 
-    public async deletePost({ request, auth }: HttpContextContract) {
+    public async deletePost({ request, authorization }: HttpContextContract) {
         const post = await ForumPost.findBy("id", request.param("postId"));
 
         if (!post) {
             throw new Exception("Post not found", 404, "E_POST_NOT_FOUND");
         }
 
-        if (post.authorId !== auth.user?.id && !await post.thread.forum.can("moderate_forums", auth.user)) {
+        if (post.authorId !== authorization.account?.id && !await post.thread.forum.can("moderate_forums", authorization.account)) {
             throw new Exception("You do not have permission to delete this post", 403, "E_NO_PERMISSION");
         }
 

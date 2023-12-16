@@ -14,7 +14,7 @@ export default class extends BaseSchema {
       /**
        * Uses timestamptz for PostgreSQL and DATETIME2 for MSSQL
        */
-      table.timestamp("created_at", { useTz: true })
+      table.timestamp("created_at", { useTz: true });
     });
 
     this.schema.createTable("forum_permissions", (table) => {
@@ -37,7 +37,7 @@ export default class extends BaseSchema {
        */
       table.timestamp("created_at", { useTz: true });
       table.timestamp("updated_at", { useTz: true });
-      table.timestamp("deleted_at", { useTz: true })
+      table.timestamp("deleted_at", { useTz: true });
     });
 
     this.schema.createTable("forum_posts", (table) => {
@@ -53,7 +53,7 @@ export default class extends BaseSchema {
        */
       table.timestamp("created_at", { useTz: true });
       table.timestamp("updated_at", { useTz: true });
-      table.timestamp("deleted_at", { useTz: true })
+      table.timestamp("deleted_at", { useTz: true });
     });
 
     this.schema.createTable("forum_tags", (table) => {

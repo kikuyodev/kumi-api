@@ -6,7 +6,7 @@ import { OpCode, SocketEvent } from "App/structures/SocketEvent";import Redis fr
 import { HttpContextContract } from "@ioc:Adonis/Core/HttpContextZAMN
 
 export default class ChatController {
-    public async join({ request, auth }: HttpContextContract) {
+    public async join({ request, authorization }: HttpContextContract) {
         const { id } = request.params();
 
         const channel = WebsocketService.channel(id);
@@ -19,11 +19,10 @@ export default class ChatController {
         if (channelModel!.type === ChatChannelType.Private) {
             const groups = await channelModel!.allowedGroups();
 
-            if (!groups.some((group) => auth.user?.groups.find((userGroup) => userGroup.id === group.id)))
+            if (!groups.some((group) => authorization.account?.groups.find((userGroup) => userGroup.id === group.id)))
                 throw new Exception("You are not allowed to join this channel", 403, "E_NOT_ALLOWED");
         }
-
-
+        
         return {
             code: 200,
             data: {
@@ -32,7 +31,7 @@ export default class ChatController {
         };
     }
 
-    public async send({ request, auth }: HttpContextContract) {
+    public async send({ request, authorization }: HttpContextContract) {
         const { id } = request.params();
         const { message } = request.body();
 
@@ -41,7 +40,7 @@ export default class ChatController {
         if (!channel)
             throw new Exception("Channel not found", 404, "E_CHANNEL_NOT_FOUND");
 
-        const messageData = await channel.send(auth.user!, message);
+        const messageData = await channel.send(authorization.account!, message);
 
         if (!messageData)
             throw new Exception("Could not send message", 500, "E_COULD_NOT_SEND_MESSAGE");

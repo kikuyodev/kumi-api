@@ -17,9 +17,11 @@ import Logger from "@ioc:Adonis/Core/Logger";
 import HttpExceptionHandler from "@ioc:Adonis/Core/HttpExceptionHandler";
 import { HttpContextContract } from "@ioc:Adonis/Core/HttpContext";
 import NoPermissionException from "App/exceptions/NoPermissionException";
+import { Exception } from "@adonisjs/core/build/standalone";
 
 const ignoreStacksOf = [
 	NoPermissionException,
+	Exception
 ];
 
 export default class ExceptionHandler extends HttpExceptionHandler {
@@ -36,6 +38,8 @@ export default class ExceptionHandler extends HttpExceptionHandler {
 		}
 
 		await super.handle(error, ctx);
+		delete ctx.response.lazyBody[0].code;
+
 
 		// Assign the error code to the response body
 		ctx.response.lazyBody[0] = Object.assign({ code: error.status, }, ctx.response.lazyBody[0]);

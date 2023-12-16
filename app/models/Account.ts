@@ -1,5 +1,5 @@
 import { BaseModel, HasMany, ManyToMany, ModelQueryBuilderContract, afterFetch, afterFind, beforeFetch, beforeFind, beforeSave, column, computed, hasMany, manyToMany } from "@ioc:Adonis/Lucid/Orm";
-import Hash from "@ioc:Adonis/Core/Hash";
+
 import Group from "App/models/Group";
 import { DateTime } from "luxon";
 import Logger from "@ioc:Adonis/Core/Logger";
@@ -163,7 +163,7 @@ export default class Account extends BaseModel {
             total_playtime: this.totalPlaytime,
             total_playcount: this.totalPlaycount,
             maximum_combo: this.maxCombo
-        }
+        };
     }
 
     @column({
@@ -307,7 +307,7 @@ export default class Account extends BaseModel {
                 global_rank,
                 country_rank
             FROM ranked WHERE id = ?
-        `, [this.id])
+        `, [this.id]);
 
         return {
             // parseInt is required because the query returns a string
