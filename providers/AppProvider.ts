@@ -14,7 +14,7 @@ export default class AppProvider {
 		// IoC container is ready
 		if (this.app.environment === "web") {
 			await import("../start/webhook");
-			await import("../start/socket");
+			await import("../start/general");
 			await import("../start/wiki");
 
 			await WikiGitService.refreshArticles();
