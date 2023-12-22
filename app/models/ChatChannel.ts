@@ -5,8 +5,6 @@ export enum ChatChannelType {
     Public,
     Private,
     System,
-    // Everything after this is a channel type that should not be stored in the database
-    // They are used to identify the channel type in the code aswell
     PrivateMessage,
 }
 
@@ -30,6 +28,7 @@ export default class ChatChannel extends BaseModel {
         prepare: (value: string[]) => value.join(","),
         consume: (value: string) => value.split(","),
         columnName: "allowed_groups",
+        serializeAs: null
     })
     public allowedGroupIds: string[];
 
