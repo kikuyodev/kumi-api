@@ -4,6 +4,7 @@ import { ChatChannelType } from "App/models/ChatChannel";
 import ChatService from "../services/ChatService";
 import { rules, schema } from "@ioc:Adonis/Core/Validator";
 import { Permissions } from "../util/Constants";
+import ChatMessage from "../models/ChatMessage";
 
 export default class ChatController {
     public async join({ request, authorization }: HttpContextContract) {
@@ -78,6 +79,5 @@ export default class ChatController {
             throw new Exception("You are not allowed to delete messages", 403, "E_NOT_ALLOWED");
 
         const { id } = request.params();
-        
     ]
 }
