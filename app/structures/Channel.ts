@@ -42,16 +42,36 @@ export class Channel {
             content: message,
         });
             
-
         // enqueue the send event
         await Redis.lpush("kumi.queue:chat:events", JSON.stringify({
-            type: "message",
+            type: "message_create",
             channel: this.channel.serialize(),
             account: account.serialize(),
             data: dbMessage.serialize(),
         }));
 
         return dbMessage;
+    }
+
+    async delete(messageId: number) {
+        const message = await ChatMessage.find(messageId);
+
+        if (!message) {
+            throw new Error("Message not found");
+        }
+
+        if (message.channelId !== this.channel.id) {
+            throw new Error("Message not in channel");
+        }
+
+        await message.delete();
+
+        // enqueue the delete event
+        await Redis.lpush("kumi.queue:chat:events", JSON.stringify({
+            type: "message_delete",
+            channel: this.channel.serialize(),
+            data: message.serialize(),
+        }));
     }
 
     async fetch() {
