@@ -7,6 +7,15 @@ import { Permissions } from "../util/Constants";
 import ChatMessage from "../models/ChatMessage";
 
 export default class ChatController {
+    public async index({ request, authorization }: HttpContextContract) {
+        return {
+            code: 200,
+            data: {
+                channels: ChatService.channels.map((channel) => channel.channel.serialize()),
+            }
+        };
+    }
+
     public async join({ request, authorization }: HttpContextContract) {
         const { id } = request.params();
 

@@ -89,6 +89,7 @@ Route.group(() => {
 
 		// /api/v1/chat
 		Route.group(() => {
+			Route.get("/", "ChatController.index");
 			Route.put("/:id/join", "ChatController.join").middleware("auth:web");
 			Route.post("/:id/messages", "ChatController.send").middleware("auth:web");
 			Route.delete("/:id/messages/:messageId", "ChatController.deleteMessage").where("messageId", Route.matchers.number()).middleware("auth:web");
