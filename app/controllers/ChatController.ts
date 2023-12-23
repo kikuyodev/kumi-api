@@ -3,8 +3,7 @@ import { HttpContextContract } from "@ioc:Adonis/Core/HttpContext";
 import { ChatChannelType } from "App/models/ChatChannel";
 import ChatService from "../services/ChatService";
 import { rules, schema } from "@ioc:Adonis/Core/Validator";
-import { Permissions } from "../util/Constants";
-import ChatMessage from "../models/ChatMessage";
+import WebsocketService from "../services/WebsocketService";
 
 export default class ChatController {
     public async index({ request, authorization }: HttpContextContract) {
@@ -19,7 +18,7 @@ export default class ChatController {
     public async join({ request, authorization }: HttpContextContract) {
         const { id } = request.params();
 
-        const channel = await ChatService.get(id);
+        const channel = WebsocketService.channel(id);
         const channelModel = channel?.channel;
         
         if (!channel)
@@ -32,10 +31,7 @@ export default class ChatController {
             if (!groups.some((group) => authorization.account?.groups.find((userGroup) => userGroup.id === group.id)))
                 throw new Exception("You are not allowed to join this channel", 403, "E_NOT_ALLOWED");
         }
-
-        // join the channel
-        await channel.join(authorization.account!);
-
+        
         return {
             code: 200,
             data: {
@@ -48,11 +44,17 @@ export default class ChatController {
         const { id } = request.params();
         const payload = await request.validate({
             schema: schema.create({
-                message: schema.string([
+                message: schema.string.optional([
+                    rules.maxLength(255),
+                ]),
+                content: schema.string.optional([
                     rules.maxLength(255),
                 ]),
             })
         });
+
+        if (!payload.message && !payload.content)
+            throw new Exception("Content is required", 400, "E_INVALID_PAYLOAD");
 
         const channel = await ChatService.get(id);
         const channelModel = channel?.channel;
@@ -60,19 +62,7 @@ export default class ChatController {
         if (!channel)
             throw new Exception("Channel not found", 404, "E_CHANNEL_NOT_FOUND");
 
-        // check if user is allowed to join
-        if (channelModel!.type === ChatChannelType.Private) {
-            const groups = await channelModel!.allowedGroups();
-
-            if (!groups.some((group) => authorization.account?.groups.find((userGroup) => userGroup.id === group.id)))
-                throw new Exception("You are not allowed to send messasges to this channel", 403, "E_NOT_ALLOWED");
-        }
-
-        // check if the user is in the channel
-        if (!channel.participants.has(authorization.account!.id))
-            throw new Exception("You are not in this channel", 403, "E_NOT_IN_CHANNEL");
-
-        const message = await channel.send(authorization.account!, payload.message);
+        const message = await channel.send(authorization.account!, payload.message ?? payload.content ?? "");
 
         return {
             code: 200,
@@ -81,12 +71,4 @@ export default class ChatController {
             }
         };
     }
-
-    public async deleteMessage({ request, authorization }: HttpContextContract) {
-        if (authorization.account?.has(Permissions.MODERATE_CHAT_CHANNELS))
-            // permission restricted to moderators only
-            throw new Exception("You are not allowed to delete messages", 403, "E_NOT_ALLOWED");
-
-        const { id } = request.params();
-    ]
 }
