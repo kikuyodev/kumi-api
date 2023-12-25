@@ -22,6 +22,8 @@ export default class ChartSubmissionsController {
         const basis = charts[0];
         let databaseSet: ChartSet | null = null;
 
+        console.log(charts)
+
         if (!basis || charts.length === 0) {
             throw new Exception("The provided chart set does not contain any charts.", 400, "E_NO_CHARTS_PROVIDED");
         }
@@ -87,6 +89,8 @@ export default class ChartSubmissionsController {
             delete newObject.expectedBackgroundFile;
             delete newObject.notes;
 
+            console.log(newObject)
+
             return newObject;
         }));
 
@@ -114,7 +118,6 @@ export default class ChartSubmissionsController {
 
         const newDatabaseSet = await ChartSet.findBy("id", databaseSet!.id);
 
-        await ChartProcessor.indexChartSet(newDatabaseSet!);
         await ChartProcessor.savePreviewAudio(newDatabaseSet!.id, basis.chart.previewTime, basis.music);
 
         return {

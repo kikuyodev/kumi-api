@@ -5,11 +5,11 @@ import { StreamZipAsync } from "node-stream-zip";
 import { ChartStatus } from "App/models/charts/Chart";
 import { unlinkSync } from "fs";
 
-const KCH_HEADER = Buffer.from("#KUMI CHART FORMAT v1");
+const KCH_HEADER = Buffer.from("#KUMI CHART FORMAT v1", "utf-8");
 
 export class ChartParser {
     private _data: Buffer;
-    
+
     constructor(data: Buffer) {
         this._data = data;
     }
@@ -92,10 +92,10 @@ export class ChartParser {
                         continue;
 
                     const timingValues = line.split(",");
-                    
+
                     if (timingValues.length < 3)
                         continue;
-                    
+
                     // the 3rd value is the BPM
                     chartData.timing.bpms.push(parseFloat(timingValues[2]));
                     break;
@@ -105,7 +105,7 @@ export class ChartParser {
 
                     if (noteValues.length < 2)
                         continue;
-                    
+
                     // TODO: only accept certain types of notes
                     const note = {
                         type: parseInt(noteValues[0]),
@@ -161,31 +161,38 @@ export class ChartParser {
             case "tags":
                 metadata.tags = value;
                 break;
+
+            case "creator":
+                if (metadata.creators === undefined)
+                    metadata.creators = [];
+
+                metadata.creators.push(value);
+                break;
+
+            case "creators":
+                if (metadata.creators === undefined)
+                    metadata.creators = [];
+
+                const values = value.split(/\s?,\s?/g);
+
+                metadata.creators.push(...values);
+                break;
+
+            case "difficulty_name":
+                metadata.difficultyName = value;
+                break;
+
+            case "preview_time":
+                metadata.previewTime = parseFloat(value);
+                break;
         }
     }
 
     private async parseChart(chartData: any, key: string, value: string) {
         switch (key) {
-            case "creator":
-                chartData.creators.push(value);
-                break;
-
-            case "creators":
-                const values = value.split(/\s?,\s?/g);
-
-                chartData.creators.push(...values);
-                break;
-
-            case "difficulty_name":
-                chartData.difficultyName = value;
-                break;
 
             case "initial_scroll_speed":
                 chartData.initialScrollSpeed = parseFloat(value);
-                break;
-
-            case "preview_time":
-                chartData.previewTime = parseFloat(value);
                 break;
 
             case "music_file":
@@ -220,10 +227,20 @@ export class ChartParser {
         entries.sort((a, b) => a.time - b.time);
 
         for (const entry of entries) {
-            const data = await set.entryData(entry.name);
+            if (entry.isDirectory || !entry.name.endsWith(".kch"))
+                continue;
 
-            // Check if the file is a KCH file
-            if (data.subarray(0, KCH_HEADER.length).toString() !== KCH_HEADER.toString()) {
+            let data = await set.entryData(entry.name);
+            let stringData = data.toString("utf-8");
+
+            // sometimes files can have byte order marks
+            // this is to remove them
+            if (stringData.startsWith("\ufeff")) {
+                data = data.subarray(3);
+                stringData = data.toString("utf-8");
+            }
+
+            if (!stringData.startsWith("#KUMI CHART FORMAT v1")) {
                 continue;
             }
 
@@ -246,8 +263,6 @@ export class ChartParser {
                 chartData.musicFile = chartData.chart.musicFile;
                 chartData.background = await set.entryData(chartData.expectedBackgroundFile);
 
-                console.log(chartData);
-
                 charts.push(chartData);
             } catch (e: any) {
                 await set.close();
@@ -263,7 +278,7 @@ export class ChartParser {
 
         return charts;
     }
-    
+
     public static async createCreatableCharts(charts: any[], basis: any) {
         const chartsToCreate: any[] = [];
 
@@ -289,14 +304,16 @@ export class ChartParser {
                 }
             }
 
+            console.log(chart)
+
             const data = {
                 chartSetId: 0,
                 artist: chart.metadata.artist,
                 title: chart.metadata.title,
                 source: chart.metadata.source,
-                tags: chart.metadata.tags,
+                tags: chart.metadata.tags ?? "",
                 status: chart.status,
-                difficultyName: chart.chart.difficultyName,
+                difficultyName: chart.metadata.difficultyName,
                 difficulty: {
                     bpms: chart.timing.bpms,
                     difficulty: 0,

@@ -9,7 +9,7 @@ export default class extends BaseSchema {
       table.string("artist", 128).notNullable();
       table.string("title", 128).notNullable();
       table.string("difficulty_name", 64).notNullable();
-      table.string("tags", 128).notNullable();
+      table.string("tags", 128).nullable();
       table.string("source", 128).nullable();
       table.jsonb("romanised_metadata").nullable();
       table.jsonb("difficulty").notNullable();
@@ -34,7 +34,7 @@ export default class extends BaseSchema {
       table.increments("id").primary();
       table.string("artist", 128).notNullable();
       table.string("title", 128).notNullable();
-      table.string("tags", 128).notNullable();
+      table.string("tags", 128).nullable();
       table.text("description").notNullable();
       table.jsonb("romanised_metadata").nullable();
       table.jsonb("attributes").defaultTo(JSON.stringify(DEFAULT_ATTRIBUTES));
