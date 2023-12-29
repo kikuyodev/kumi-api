@@ -25,6 +25,17 @@ export class ChartProcessor {
             chartDataString = chartDataString.replace(setIdRegex, `CHART_SET_ID = ${chart.chartSetId}`);
             chartDataString = chartDataString.replace(idRegex, `CHART_ID = ${chart.id}`);
 
+            // append the ids if the fields theirselves are not present
+            var chartSectionLocation = chartDataString.indexOf("[#CHART]");
+
+            if (chartSectionLocation === -1) {
+                // 
+            }
+
+
+            if (!setIdRegex.test(chartDataString)) {
+            }
+
             const buffer = Buffer.from(chartDataString);
 
             await ChartProcessor.pushChartFiles(databaseSet!.id, `${chart.id}.kch`, buffer);

@@ -17,12 +17,15 @@ export default class ChartSubmissionsController {
 
     public async submit(ctx: HttpContextContract) {
         const { request, authorization } = ctx;
+        if (!authorization.account) {
+            throw new Exception("You must be logged in to submit a chart set.", 403, "E_NOT_LOGGED_IN");
+        }
+
         const charts = await this.validateAndParseChartSet(ctx);
+
 
         const basis = charts[0];
         let databaseSet: ChartSet | null = null;
-
-        console.log(charts)
 
         if (!basis || charts.length === 0) {
             throw new Exception("The provided chart set does not contain any charts.", 400, "E_NO_CHARTS_PROVIDED");
@@ -89,8 +92,6 @@ export default class ChartSubmissionsController {
             delete newObject.expectedBackgroundFile;
             delete newObject.notes;
 
-            console.log(newObject)
-
             return newObject;
         }));
 
@@ -142,6 +143,10 @@ export default class ChartSubmissionsController {
 
     public async update(ctx: HttpContextContract) {
         const { request, authorization } = ctx;
+        if (!authorization.account) {
+            throw new Exception("You must be logged in to update a chart set.", 403, "E_NOT_LOGGED_IN");
+        }
+
         const charts = await this.validateAndParseChartSet(ctx);
         const basis = charts[0];
 
@@ -215,8 +220,6 @@ export default class ChartSubmissionsController {
             const toCheck = ["artist", "title", "source", "tags"];
             const toCheckChart = ["difficultyName", "status"];
             const toCheckMetadata = ["artistRomanised", "titleRomanised", "sourceRomanised"];
-
-            console.log(chart);
 
             for (const key of toCheck) {
                 const pushKey = key.replace(/([A-Z])/g, "_$1").toLowerCase();
