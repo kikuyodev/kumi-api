@@ -59,6 +59,7 @@ Route.group(() => {
 		Route.group(() => {
 			Route.get("/search", "ChartSetsController.search");
 			Route.get("/:id", "ChartSetsController.fetch").where("id", Route.matchers.number());
+			Route.get("/:id/download", "ChartSetsController.download").where("id", Route.matchers.number());
 			Route.post("/:id/nominations", "ChartSetsController.nominate").where("id", Route.matchers.number()).middleware("auth:web");
 			Route.get("/:id/comments", "ChartSetsController.fetchComments").where("id", Route.matchers.number());
 			Route.post("/:id/comments", "ChartSetsController.postComment").where("id", Route.matchers.number()).middleware("auth:web");

@@ -8,6 +8,8 @@ import MeiliSearch from "App/services/MeiliSearch";
 import Account from "../../models/Account";
 import Chart, { ChartStatus } from "../../models/charts/Chart";
 import ChartSet from "../../models/charts/ChartSet";
+import StreamZip from "node-stream-zip";
+import AdmZip from "adm-zip";
 
 export class ChartProcessor {
     public static async initCharts(databaseSet: ChartSet, charts: Chart[], chartsToCreate: any[], user: Account) {
@@ -109,4 +111,12 @@ export class ChartProcessor {
         unlinkSync(file);
     }
 
+    public static async archiveChartSet(set: ChartSet) {
+        const directory = Application.tmpPath(`files/sets/${set.id}`);
+
+        var zip = new AdmZip();
+        zip.addLocalFolder(directory);
+
+        return zip.toBuffer();
+    }
 }

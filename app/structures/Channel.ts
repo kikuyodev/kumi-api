@@ -32,6 +32,7 @@ export class Channel {
 
     async send(account: Account, message: string) {
         // check if the user is in the channel
+        console.log(account)
         if (!this.participants.has(account.id)) {
             throw new Error("User is not in the channel");
         }

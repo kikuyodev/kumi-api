@@ -1,4 +1,5 @@
 import Application from "@ioc:Adonis/Core/Application";
+import Redis from "@ioc:Adonis/Addons/Redis";
 import Drive from "@ioc:Adonis/Core/Drive";
 import { HttpContextContract } from "@ioc:Adonis/Core/HttpContext";
 import { schema } from "@ioc:Adonis/Core/Validator";
@@ -120,6 +121,11 @@ export default class ChartSubmissionsController {
         const newDatabaseSet = await ChartSet.findBy("id", databaseSet!.id);
 
         await ChartProcessor.savePreviewAudio(newDatabaseSet!.id, basis.chart.previewTime, basis.music);
+
+        
+        await Redis.lpush("kumi.queue:chartsets:index", JSON.stringify({
+            id: newDatabaseSet!.id,
+        }));
 
         return {
             code: 200,

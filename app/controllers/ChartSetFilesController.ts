@@ -5,6 +5,7 @@ import ChartSet from "App/models/charts/ChartSet";
 import sharp from "sharp";
 import { Readable } from "node:stream";
 import { Exception } from "@adonisjs/core/build/standalone";
+import archiver from "archiver";
 
 const musicFormats = ["mp3", "ogg", "wav", "flac", "m4a", "aac" ];
 

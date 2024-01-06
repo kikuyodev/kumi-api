@@ -8,6 +8,7 @@ import Database from "@ioc:Adonis/Lucid/Database";
 import { ChartStatus } from "App/models/charts/Chart";
 import { rules, schema, validator } from "@ioc:Adonis/Core/Validator";
 import MeiliSearch from "App/services/MeiliSearch";
+import { Readable } from "stream";
 import ChartModdingEvent from "../models/charts/ChartModdingEvent";
 import Comment, { CommentSourceType } from "../models/Comment";
 import CommentsController from "./CommentsController";
@@ -31,6 +32,23 @@ export default class ChartSetsController {
                 set: chartSet.serialize()
             }
         };
+    }
+
+    public async download({ request, response }: HttpContextContract) {
+        const { id } = request.params();
+        const chartSet = await ChartSet.findBy("id", id);
+
+        if (!chartSet) {
+            throw new Exception("This set does not exist.", 404, "E_SET_NOT_FOUND");
+        }
+
+        Logger.trace("archiving chart set", chartSet);
+
+        var buffer = await ChartProcessor.archiveChartSet(chartSet);
+        const readStream = Readable.from(buffer);
+
+        response.header("Content-Disposition", `attachment; filename=${chartSet.artist} - ${chartSet.title} ${chartSet.id}.kcs`);        
+        return response.stream(readStream);
     }
 
     public async modify({ request, authorization }: HttpContextContract) {

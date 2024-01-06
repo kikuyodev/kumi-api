@@ -16,7 +16,7 @@ class ChatService {
     }
 
     async get(id: number | string): Promise<Channel | undefined> {
-        return this.channels.find((channel) => channel.channel.id === id || channel.channel.tag === id);
+        return this.channels.find((channel) => channel.channel.id === parseInt(id.toString()) || channel.channel.tag === id);
     }
 }
 

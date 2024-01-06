@@ -18,7 +18,7 @@ export default class ChatController {
     public async join({ request, authorization }: HttpContextContract) {
         const { id } = request.params();
 
-        const channel = WebsocketService.channel(id);
+        const channel = await ChatService.get(id);
         const channelModel = channel?.channel;
         
         if (!channel)
@@ -31,6 +31,8 @@ export default class ChatController {
             if (!groups.some((group) => authorization.account?.groups.find((userGroup) => userGroup.id === group.id)))
                 throw new Exception("You are not allowed to join this channel", 403, "E_NOT_ALLOWED");
         }
+
+        await channel!.join(authorization.account!);
         
         return {
             code: 200,
